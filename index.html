@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大学物理虚拟仿真实践项目库</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+        
+        :root {
+            --mechanics: #4a6ee0;
+            --thermodynamics: #e74c3c;
+            --electromagnetism: #9b59b6;
+            --optics: #f39c12;
+            --modern: #2ecc71;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --gray: #6c757d;
+            --border: #eaeaea;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: var(--dark);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .creator {
+            position: absolute;
+            right: 30px;
+            top: 30px;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        .categories {
+            display: flex;
+            background: var(--light);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        
+        .category-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: none;
+            background: var(--light);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .category-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            transition: height 0.3s ease;
+            z-index: 1;
+        }
+        
+        .category-btn span {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .category-btn.mechanics { 
+            color: var(--mechanics); 
+            border-bottom: 4px solid var(--mechanics); 
+        }
+        .category-btn.thermodynamics { 
+            color: var(--thermodynamics); 
+            border-bottom: 4px solid var(--thermodynamics); 
+        }
+        .category-btn.electromagnetism { 
+            color: var(--electromagnetism); 
+            border-bottom: 4px solid var(--electromagnetism); 
+        }
+        .category-btn.optics { 
+            color: var(--optics); 
+            border-bottom: 4px solid var(--optics); 
+        }
+        .category-btn.modern { 
+            color: var(--modern); 
+            border-bottom: 4px solid var(--modern); 
+        }
+        
+        .category-btn.active.mechanics::before {
+            height: 100%;
+            background-color: var(--mechanics);
+        }
+        .category-btn.active.thermodynamics::before {
+            height: 100%;
+            background-color: var(--thermodynamics);
+        }
+        .category-btn.active.electromagnetism::before {
+            height: 100%;
+            background-color: var(--electromagnetism);
+        }
+        .category-btn.active.optics::before {
+            height: 100%;
+            background-color: var(--optics);
+        }
+        .category-btn.active.modern::before {
+            height: 100%;
+            background-color: var(--modern);
+        }
+        
+        .category-btn.active {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .content-area {
+            padding: 30px;
+            min-height: 600px;
+        }
+        
+        .subcategories {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .subcategory-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            color: var(--gray);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .subcategory-btn:hover, .subcategory-btn.active {
+            color: var(--dark);
+            border-bottom: 3px solid var(--mechanics);
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-7px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .card-category {
+            font-size: 0.9rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .card-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .purpose-section, .content-section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: "•";
+            margin-right: 8px;
+            font-size: 1.5rem;
+        }
+        
+        .purpose-section .section-title { color: var(--mechanics); }
+        .content-section .section-title { color: var(--electromagnetism); }
+        
+        .section-content {
+            font-size: 0.95rem;
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .card-footer {
+            padding: 15px 20px;
+            background: var(--light);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .simulation-btn {
+            padding: 10px 20px;
+            background: var(--mechanics);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .simulation-btn:hover {
+            background: var(--dark);
+        }
+        
+        .difficulty {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: var(--gray);
+        }
+        
+        .difficulty.beginner { background: #d4edda; color: #155724; }
+        .difficulty.intermediate { background: #fff3cd; color: #856404; }
+        .difficulty.advanced { background: #f8d7da; color: #721c24; }
+        
+        .category-content {
+            display: none;
+        }
+        
+        .category-content.active {
+            display: block;
+        }
+        
+        .subcategory-content {
+            display: none;
+        }
+        
+        .subcategory-content.active {
+            display: block;
+        }
+        
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .categories {
+                flex-direction: column;
+            }
+            
+            .category-btn {
+                min-width: 100%;
+            }
+            
+            .creator {
+                position: static;
+                text-align: center;
+                margin-top: 10px;
+            }
+            
+            .subcategories {
+                flex-direction: column;
+            }
+            
+            .subcategory-btn {
+                text-align: center;
+                border-bottom: 1px solid var(--border);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>大学物理虚拟仿真实践项目库</h1>
+            <p class="subtitle">西安工业大学</p>
+            <div class="creator">创建者：白岗</div>
+        </header>
+        
+        <div class="categories">
+            <button class="category-btn mechanics active" data-category="mechanics">
+                <span>力学</span>
+            </button>
+            <button class="category-btn thermodynamics" data-category="thermodynamics">
+                <span>热学</span>
+            </button>
+            <button class="category-btn electromagnetism" data-category="electromagnetism">
+                <span>电磁学</span>
+            </button>
+            <button class="category-btn optics" data-category="optics">
+                <span>光学</span>
+            </button>
+            <button class="category-btn modern" data-category="modern">
+                <span>近代物理学</span>
+            </button>
+        </div>
+        
+        <div class="content-area">
+            <!-- 力学内容 -->
+            <div class="category-content active" id="mechanics-content">
+                <div class="subcategories">
+                    <button class="subcategory-btn active" data-subcategory="phenomenon">物理现象虚拟仿真</button>
+                    <button class="subcategory-btn" data-subcategory="engineering">工程应用虚拟仿真</button>
+                </div>
+                
+                <div class="subcategory-content active" id="mechanics-phenomenon">
+                    <div class="projects-grid" id="mechanics-phenomenon-projects">
+                        <!-- 力学物理现象项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="subcategory-content" id="mechanics-engineering">
+                    <div class="projects-grid" id="mechanics-engineering-projects">
+                        <!-- 力学工程应用项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 热学内容 -->
+            <div class="category-content" id="thermodynamics-content">
+                <div class="subcategories">
+                    <button class="subcategory-btn active" data-subcategory="phenomenon">物理现象虚拟仿真</button>
+                    <button class="subcategory-btn" data-subcategory="engineering">工程应用虚拟仿真</button>
+                </div>
+                
+                <div class="subcategory-content active" id="thermodynamics-phenomenon">
+                    <div class="projects-grid" id="thermodynamics-phenomenon-projects">
+                        <!-- 热学物理现象项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="subcategory-content" id="thermodynamics-engineering">
+                    <div class="projects-grid" id="thermodynamics-engineering-projects">
+                        <!-- 热学工程应用项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 电磁学内容 -->
+            <div class="category-content" id="electromagnetism-content">
+                <div class="subcategories">
+                    <button class="subcategory-btn active" data-subcategory="phenomenon">物理现象虚拟仿真</button>
+                    <button class="subcategory-btn" data-subcategory="engineering">工程应用虚拟仿真</button>
+                </div>
+                
+                <div class="subcategory-content active" id="electromagnetism-phenomenon">
+                    <div class="projects-grid" id="electromagnetism-phenomenon-projects">
+                        <!-- 电磁学物理现象项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="subcategory-content" id="electromagnetism-engineering">
+                    <div class="projects-grid" id="electromagnetism-engineering-projects">
+                        <!-- 电磁学工程应用项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 光学内容 -->
+            <div class="category-content" id="optics-content">
+                <div class="subcategories">
+                    <button class="subcategory-btn active" data-subcategory="phenomenon">物理现象虚拟仿真</button>
+                    <button class="subcategory-btn" data-subcategory="engineering">工程应用虚拟仿真</button>
+                </div>
+                
+                <div class="subcategory-content active" id="optics-phenomenon">
+                    <div class="projects-grid" id="optics-phenomenon-projects">
+                        <!-- 光学物理现象项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="subcategory-content" id="optics-engineering">
+                    <div class="projects-grid" id="optics-engineering-projects">
+                        <!-- 光学工程应用项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 近代物理学内容 -->
+            <div class="category-content" id="modern-content">
+                <div class="subcategories">
+                    <button class="subcategory-btn active" data-subcategory="phenomenon">物理现象虚拟仿真</button>
+                    <button class="subcategory-btn" data-subcategory="engineering">工程应用虚拟仿真</button>
+                </div>
+                
+                <div class="subcategory-content active" id="modern-phenomenon">
+                    <div class="projects-grid" id="modern-phenomenon-projects">
+                        <!-- 近代物理学物理现象项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="subcategory-content" id="modern-engineering">
+                    <div class="projects-grid" id="modern-engineering-projects">
+                        <!-- 近代物理学工程应用项目将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 根据您提供的映射表严格创建的项目数据
+        const physicsProjects = {
+            mechanics: {
+                phenomenon: [
+                    {
+                        id: 1,
+                        title: "单摆振动现象仿真",
+                        purpose: "理解简谐振动的基本规律，掌握单摆振动特性",
+                        content: "通过调整摆长和初始角度，观察单摆的振动周期和振幅变化。分析简谐振动的运动方程，验证单摆周期公式。研究阻尼对振动的影响。",
+                        difficulty: "beginner",
+                        geogebraUrl: "https://www.geogebra.org/m/gwtu7j2n",
+                        knowledgePoints: ["简谐振动", "单摆"]
+                    },
+                    {
+                        id: 2,
+                        title: "惠更斯原理现象仿真",
+                        purpose: "验证惠更斯原理，理解波阵面的传播规律",
+                        content: "模拟机械波的传播过程，观察波阵面的形成和演化。验证惠更斯原理在波传播中的应用，分析波的衍射现象。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/rbez93gu",
+                        knowledgePoints: ["机械波的传播", "惠更斯原理"]
+                    },
+                    {
+                        id: 3,
+                        title: "自然坐标系下曲线运动现象仿真",
+                        purpose: "掌握自然坐标系分析方法，理解曲线运动的切向和法向加速度",
+                        content: "在自然坐标系下分析曲线运动，观察切向加速度和法向加速度的变化。研究不同轨迹下加速度分量的特性。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/yw33bmh8",
+                        knowledgePoints: ["自然坐标系"]
+                    },
+                    {
+                        id: 4,
+                        title: "多普勒效应现象仿真",
+                        purpose: "理解多普勒效应原理，掌握波源运动对频率的影响",
+                        content: "设置波源与观察者的相对运动，测量接收频率的变化。分析多普勒效应的数学表达式，验证频率变化公式。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/jmq6stja",
+                        knowledgePoints: ["多普勒效应"]
+                    },
+                    {
+                        id: 5,
+                        title: "机械波的合成现象仿真",
+                        purpose: "理解波的叠加原理，掌握波的合成规律",
+                        content: "模拟两个或多个机械波的叠加过程，观察合成波的波形。分析相长干涉和相消干涉的条件，研究驻波的形成。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/mebr8xut",
+                        knowledgePoints: ["波的叠加", "波的合成"]
+                    },
+                    {
+                        id: 6,
+                        title: "驻波现象仿真",
+                        purpose: "理解驻波的形成条件，掌握驻波特性",
+                        content: "观察驻波的形成过程，测量波节和波腹的位置。分析驻波与行波的区别，研究边界条件对驻波的影响。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/yuaafbg5",
+                        knowledgePoints: ["驻波"]
+                    },
+                    {
+                        id: 7,
+                        title: "子弹与单杆碰撞-角动量守恒现象仿真",
+                        purpose: "验证角动量守恒定律，理解碰撞过程中的角动量转移",
+                        content: "模拟子弹与单杆的碰撞过程，观察系统的角动量变化。验证角动量守恒定律，分析碰撞前后角动量的关系。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/ycaefany",
+                        knowledgePoints: ["角动量守恒"]
+                    }
+                ],
+                engineering: [
+                    {
+                        id: 8,
+                        title: "工程应用仿真-PLZ05榴弹炮高射界射击仿真模拟",
+                        purpose: "应用牛顿第二定律分析弹道运动，理解高射界射击原理",
+                        content: "模拟PLZ05榴弹炮高射界射击过程，分析弹丸在重力作用下的抛物线运动。计算射程、飞行时间和落点精度，优化射击参数。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/mxexkegw",
+                        knowledgePoints: ["牛顿第二定律"]
+                    },
+                    {
+                        id: 9,
+                        title: "工程应用仿真-上海第一高楼抗风仿真",
+                        purpose: "研究阻尼振动和振动合成在高楼抗风设计中的应用",
+                        content: "模拟上海第一高楼在风力作用下的振动响应，分析阻尼系统对振动控制的效果。研究不同风速和风向对建筑结构的影响。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/mxcsbhha",
+                        knowledgePoints: ["阻尼振动", "振动的合成"]
+                    },
+                    {
+                        id: 10,
+                        title: "工程应用仿真-天文一号火星伞降过程仿真模拟",
+                        purpose: "应用牛顿第二定律分析探测器降落过程",
+                        content: "模拟天文一号火星探测器的伞降过程，分析空气阻力和重力对降落速度的影响。优化降落伞设计参数，确保安全着陆。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/cdc2gxp6",
+                        knowledgePoints: ["牛顿第二定律"]
+                    },
+                    {
+                        id: 11,
+                        title: "工程应用仿真-双机翼直升机角动量守恒",
+                        purpose: "应用角动量守恒和力矩原理分析直升机飞行稳定性",
+                        content: "模拟双机翼直升机飞行过程，分析角动量守恒在飞行控制中的应用。研究力矩对直升机姿态调整的影响。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/hcxcug3b",
+                        knowledgePoints: ["角动量守恒", "力矩"]
+                    }
+                ]
+            },
+            thermodynamics: {
+                phenomenon: [],
+                engineering: []
+            },
+            electromagnetism: {
+                phenomenon: [
+                    {
+                        id: 12,
+                        title: "一对异种电荷形成的电场中电场线虚拟仿真",
+                        purpose: "可视化电场分布，理解电场线的物理意义",
+                        content: "观察一对异种电荷的电场线分布，分析电场强度的空间变化。研究等势面与电场线的关系，验证电场线性质。",
+                        difficulty: "beginner",
+                        geogebraUrl: "https://www.geogebra.org/m/n49nuwhs",
+                        knowledgePoints: ["电场线"]
+                    },
+                    {
+                        id: 13,
+                        title: "磁聚焦现象仿真",
+                        purpose: "理解洛伦兹力作用下的粒子运动，掌握磁聚焦原理",
+                        content: "模拟带电粒子在磁场中的运动，观察磁聚焦现象。分析洛伦兹力对粒子轨迹的影响，研究磁聚焦的条件和应用。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/ukmzyxym",
+                        knowledgePoints: ["洛伦兹力", "复合场"]
+                    },
+                    {
+                        id: 14,
+                        title: "带电粒子磁场中洛伦兹力现象仿真",
+                        purpose: "验证洛伦兹力公式，理解带电粒子在磁场中的运动规律",
+                        content: "观察带电粒子在均匀磁场中的运动轨迹，验证洛伦兹力公式。分析粒子速度、电荷量和磁场强度对轨迹的影响。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/rjhe5fkb",
+                        knowledgePoints: ["洛伦兹力"]
+                    }
+                ],
+                engineering: [
+                    {
+                        id: 15,
+                        title: "工程应用仿真-卫星定位系统",
+                        purpose: "理解机械波和电磁波在卫星定位中的应用原理",
+                        content: "模拟卫星定位系统的工作原理，分析信号传播时间与位置计算的关系。研究多路径效应对定位精度的影响。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/w4dsm3q4",
+                        knowledgePoints: ["机械波的传播", "电磁波的传播"]
+                    }
+                ]
+            },
+            optics: {
+                phenomenon: [
+                    {
+                        id: 16,
+                        title: "马吕斯定律虚拟仿真",
+                        purpose: "验证马吕斯定律，理解线偏振光的特性",
+                        content: "观察偏振片对线偏振光强度的影响，验证马吕斯定律。分析偏振方向与光强的关系，研究偏振光的应用。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/unjft4nz",
+                        knowledgePoints: ["马吕斯定律"]
+                    },
+                    {
+                        id: 17,
+                        title: "反射光和折射光的偏振现象仿真",
+                        purpose: "验证布儒斯特定律，理解反射光和折射光的偏振特性",
+                        content: "观察光在介质界面反射和折射时的偏振变化，测量布儒斯特角。验证布儒斯特定律，分析偏振光的产生机制。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/qmuqtqsc",
+                        knowledgePoints: ["布儒斯特定律"]
+                    },
+                    {
+                        id: 18,
+                        title: "等倾干涉现象仿真",
+                        purpose: "理解等倾干涉原理，掌握干涉条纹的形成规律",
+                        content: "观察等倾干涉现象，分析干涉条纹的分布特点。研究薄膜厚度和入射角对干涉条纹的影响，验证等倾干涉条件。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/yundfru4",
+                        knowledgePoints: ["等倾干涉"]
+                    }
+                ],
+                engineering: []
+            },
+            modern: {
+                phenomenon: [
+                    {
+                        id: 19,
+                        title: "黑体辐射现象仿真",
+                        purpose: "理解黑体辐射规律，掌握普朗克辐射公式",
+                        content: "模拟黑体辐射现象，观察辐射能量随波长和温度的变化。验证普朗克辐射公式，分析维恩位移定律和斯特藩-玻尔兹曼定律。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/ywhdbczc",
+                        knowledgePoints: ["黑体辐射"]
+                    }
+                ],
+                engineering: []
+            }
+        };
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 渲染所有分类的项目
+            renderAllProjects();
+            
+            // 设置主分类切换
+            setupCategorySwitching();
+            
+            // 设置子分类切换
+            setupSubcategorySwitching();
+        });
+
+        // 渲染所有分类的项目
+        function renderAllProjects() {
+            for (const category in physicsProjects) {
+                for (const subcategory in physicsProjects[category]) {
+                    renderProjects(category, subcategory, physicsProjects[category][subcategory]);
+                }
+            }
+        }
+
+        // 渲染指定分类和子分类的项目
+        function renderProjects(category, subcategory, projects) {
+            const container = document.getElementById(`${category}-${subcategory}-projects`);
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (projects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔬</div>
+                        <h3>暂无${getCategoryName(category)}${getSubcategoryName(subcategory)}项目</h3>
+                        <p>该分类下的仿真项目正在开发中，敬请期待</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            projects.forEach(project => {
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-title">${project.title}</div>
+                        <div class="card-category">${getCategoryName(category)} · ${getSubcategoryName(subcategory)} · ${project.knowledgePoints.join('、')}</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="purpose-section">
+                            <div class="section-title">实践目的</div>
+                            <div class="section-content">${project.purpose}</div>
+                        </div>
+                        <div class="content-section">
+                            <div class="section-title">实践内容</div>
+                            <div class="section-content">${project.content}</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="${project.geogebraUrl}" target="_blank" class="simulation-btn">开始实验</a>
+                        <div class="difficulty ${project.difficulty}">${getDifficultyText(project.difficulty)}</div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // 设置主分类切换
+        function setupCategorySwitching() {
+            const categoryButtons = document.querySelectorAll('.category-btn');
+            const categoryContents = document.querySelectorAll('.category-content');
+            
+            categoryButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新活跃按钮
+                    categoryButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // 更新显示内容
+                    const category = this.getAttribute('data-category');
+                    categoryContents.forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(`${category}-content`).classList.add('active');
+                    
+                    // 重置子分类为第一个
+                    const subcategoryBtns = document.querySelectorAll(`#${category}-content .subcategory-btn`);
+                    const subcategoryContents = document.querySelectorAll(`#${category}-content .subcategory-content`);
+                    
+                    if (subcategoryBtns.length > 0) {
+                        subcategoryBtns.forEach(btn => btn.classList.remove('active'));
+                        subcategoryContents.forEach(content => content.classList.remove('active'));
+                        
+                        subcategoryBtns[0].classList.add('active');
+                        subcategoryContents[0].classList.add('active');
+                    }
+                });
+            });
+        }
+
+        // 设置子分类切换
+        function setupSubcategorySwitching() {
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('subcategory-btn')) {
+                    const subcategoryBtn = e.target;
+                    const categoryContent = subcategoryBtn.closest('.category-content');
+                    const subcategory = subcategoryBtn.getAttribute('data-subcategory');
+                    
+                    // 更新活跃按钮
+                    categoryContent.querySelectorAll('.subcategory-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    subcategoryBtn.classList.add('active');
+                    
+                    // 更新显示内容
+                    categoryContent.querySelectorAll('.subcategory-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    categoryContent.querySelector(`#${categoryContent.id.split('-')[0]}-${subcategory}`).classList.add('active');
+                }
+            });
+        }
+
+        // 获取分类名称
+        function getCategoryName(category) {
+            const names = {
+                mechanics: '力学',
+                thermodynamics: '热学',
+                electromagnetism: '电磁学',
+                optics: '光学',
+                modern: '近代物理学'
+            };
+            return names[category] || category;
+        }
+
+        // 获取子分类名称
+        function getSubcategoryName(subcategory) {
+            const names = {
+                phenomenon: '物理现象虚拟仿真',
+                engineering: '工程应用虚拟仿真'
+            };
+            return names[subcategory] || subcategory;
+        }
+
+        // 获取难度文本
+        function getDifficultyText(difficulty) {
+            const texts = {
+                beginner: '初级',
+                intermediate: '中级',
+                advanced: '高级'
+            };
+            return texts[difficulty] || difficulty;
+        }
+    </script>
+</body>
+</html>
