@@ -483,21 +483,12 @@
     </div>
 
     <script>
-        // 根据您提供的映射表严格创建的项目数据
+        // 根据映射表严格创建的项目数据
         const physicsProjects = {
             mechanics: {
                 phenomenon: [
                     {
                         id: 1,
-                        title: "单摆振动现象仿真",
-                        purpose: "理解简谐振动的基本规律，掌握单摆振动特性",
-                        content: "通过调整摆长和初始角度，观察单摆的振动周期和振幅变化。分析简谐振动的运动方程，验证单摆周期公式。研究阻尼对振动的影响。",
-                        difficulty: "beginner",
-                        geogebraUrl: "https://www.geogebra.org/m/gwtu7j2n",
-                        knowledgePoints: ["简谐振动", "单摆"]
-                    },
-                    {
-                        id: 2,
                         title: "惠更斯原理现象仿真",
                         purpose: "验证惠更斯原理，理解波阵面的传播规律",
                         content: "模拟机械波的传播过程，观察波阵面的形成和演化。验证惠更斯原理在波传播中的应用，分析波的衍射现象。",
@@ -506,7 +497,7 @@
                         knowledgePoints: ["机械波的传播", "惠更斯原理"]
                     },
                     {
-                        id: 3,
+                        id: 2,
                         title: "自然坐标系下曲线运动现象仿真",
                         purpose: "掌握自然坐标系分析方法，理解曲线运动的切向和法向加速度",
                         content: "在自然坐标系下分析曲线运动，观察切向加速度和法向加速度的变化。研究不同轨迹下加速度分量的特性。",
@@ -515,7 +506,7 @@
                         knowledgePoints: ["自然坐标系"]
                     },
                     {
-                        id: 4,
+                        id: 3,
                         title: "多普勒效应现象仿真",
                         purpose: "理解多普勒效应原理，掌握波源运动对频率的影响",
                         content: "设置波源与观察者的相对运动，测量接收频率的变化。分析多普勒效应的数学表达式，验证频率变化公式。",
@@ -524,7 +515,7 @@
                         knowledgePoints: ["多普勒效应"]
                     },
                     {
-                        id: 5,
+                        id: 4,
                         title: "机械波的合成现象仿真",
                         purpose: "理解波的叠加原理，掌握波的合成规律",
                         content: "模拟两个或多个机械波的叠加过程，观察合成波的波形。分析相长干涉和相消干涉的条件，研究驻波的形成。",
@@ -533,7 +524,7 @@
                         knowledgePoints: ["波的叠加", "波的合成"]
                     },
                     {
-                        id: 6,
+                        id: 5,
                         title: "驻波现象仿真",
                         purpose: "理解驻波的形成条件，掌握驻波特性",
                         content: "观察驻波的形成过程，测量波节和波腹的位置。分析驻波与行波的区别，研究边界条件对驻波的影响。",
@@ -542,27 +533,99 @@
                         knowledgePoints: ["驻波"]
                     },
                     {
-                        id: 7,
+                        id: 6,
                         title: "子弹与单杆碰撞-角动量守恒现象仿真",
                         purpose: "验证角动量守恒定律，理解碰撞过程中的角动量转移",
                         content: "模拟子弹与单杆的碰撞过程，观察系统的角动量变化。验证角动量守恒定律，分析碰撞前后角动量的关系。",
                         difficulty: "advanced",
                         geogebraUrl: "https://www.geogebra.org/m/ycaefany",
                         knowledgePoints: ["角动量守恒"]
+                    },
+                    {
+                        id: 7,
+                        title: "单摆摆动现象虚拟仿真",
+                        purpose: "理解简谐振动的基本规律，掌握单摆振动特性",
+                        content: "通过调整摆长和初始角度，观察单摆的振动周期和振幅变化。分析简谐振动的运动方程，验证单摆周期公式。研究阻尼对振动的影响。",
+                        difficulty: "beginner",
+                        geogebraUrl: "https://www.geogebra.org/m/gwtu7j2n",
+                        knowledgePoints: ["简谐振动", "单摆"]
+                    },
+                    {
+                        id: 8,
+                        title: "转动惯量相关现象仿真",
+                        purpose: "理解转动惯量的物理意义，掌握刚体转动规律",
+                        content: "研究不同形状物体的转动惯量，分析质量分布对转动惯量的影响。验证转动定律，探索转动惯量在工程中的应用。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/fhakf7de",
+                        knowledgePoints: ["转动惯量"]
+                    },
+                    {
+                        id: 9,
+                        title: "旋转矢量法相关现象仿真",
+                        purpose: "掌握旋转矢量法，理解简谐振动的几何表示",
+                        content: "使用旋转矢量法分析简谐振动，观察振动相位与旋转矢量的关系。研究旋转矢量在振动合成中的应用。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/nf868vqs",
+                        knowledgePoints: ["简谐振动", "旋转矢量法"]
+                    },
+                    {
+                        id: 10,
+                        title: "物块碰撞现象仿真",
+                        purpose: "验证动量守恒和能量守恒定律，理解碰撞过程",
+                        content: "模拟不同条件下的物块碰撞，观察动量守恒和能量守恒。分析弹性碰撞和非弹性碰撞的特点，研究恢复系数的影响。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/tt5nbfyk",
+                        knowledgePoints: ["动量守恒定律", "能量守恒定律"]
+                    },
+                    {
+                        id: 11,
+                        title: "波的反射现象仿真",
+                        purpose: "理解波的反射规律，掌握反射定律",
+                        content: "观察机械波在不同界面的反射现象，分析反射角与入射角的关系。研究固定端和自由端反射的特点。",
+                        difficulty: "intermediate",
+                        geogebraUrl: "https://www.geogebra.org/m/kywnzkdp",
+                        knowledgePoints: ["机械波的传播", "波的反射"]
+                    },
+                    {
+                        id: 12,
+                        title: "阻尼振动现象仿真",
+                        purpose: "理解阻尼振动特性，掌握阻尼对振动的影响",
+                        content: "研究不同阻尼条件下的振动衰减过程，观察振幅随时间的变化规律。分析临界阻尼、过阻尼和欠阻尼的特点。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/rf8xtxvp",
+                        knowledgePoints: ["阻尼振动"]
+                    },
+                    {
+                        id: 13,
+                        title: "机械波的传播过程现象仿真",
+                        purpose: "理解机械波的传播机制，掌握波的基本特性",
+                        content: "模拟机械波在介质中的传播过程，观察波速、波长和频率的关系。研究横波和纵波的传播特点。",
+                        difficulty: "beginner",
+                        geogebraUrl: "https://www.geogebra.org/m/s3utz7su",
+                        knowledgePoints: ["机械波的传播"]
+                    },
+                    {
+                        id: 14,
+                        title: "简谐振动现象仿真",
+                        purpose: "理解简谐振动的基本规律，掌握振动图像分析",
+                        content: "观察弹簧振子的简谐振动，分析位移、速度和加速度的变化规律。研究振动图像，理解相位和初相的概念。",
+                        difficulty: "beginner",
+                        geogebraUrl: "https://www.geogebra.org/m/dy9d6jgg",
+                        knowledgePoints: ["弹簧振子", "简谐振动", "简谐振动的图像"]
                     }
                 ],
                 engineering: [
                     {
-                        id: 8,
+                        id: 15,
                         title: "工程应用仿真-PLZ05榴弹炮高射界射击仿真模拟",
                         purpose: "应用牛顿第二定律分析弹道运动，理解高射界射击原理",
                         content: "模拟PLZ05榴弹炮高射界射击过程，分析弹丸在重力作用下的抛物线运动。计算射程、飞行时间和落点精度，优化射击参数。",
                         difficulty: "advanced",
                         geogebraUrl: "https://www.geogebra.org/m/mxexkegw",
-                        knowledgePoints: ["牛顿第二定律"]
+                        knowledgePoints: ["牛顿第二定律", "斜抛运动"]
                     },
                     {
-                        id: 9,
+                        id: 16,
                         title: "工程应用仿真-上海第一高楼抗风仿真",
                         purpose: "研究阻尼振动和振动合成在高楼抗风设计中的应用",
                         content: "模拟上海第一高楼在风力作用下的振动响应，分析阻尼系统对振动控制的效果。研究不同风速和风向对建筑结构的影响。",
@@ -571,7 +634,7 @@
                         knowledgePoints: ["阻尼振动", "振动的合成"]
                     },
                     {
-                        id: 10,
+                        id: 17,
                         title: "工程应用仿真-天文一号火星伞降过程仿真模拟",
                         purpose: "应用牛顿第二定律分析探测器降落过程",
                         content: "模拟天文一号火星探测器的伞降过程，分析空气阻力和重力对降落速度的影响。优化降落伞设计参数，确保安全着陆。",
@@ -580,13 +643,22 @@
                         knowledgePoints: ["牛顿第二定律"]
                     },
                     {
-                        id: 11,
+                        id: 18,
                         title: "工程应用仿真-双机翼直升机角动量守恒",
                         purpose: "应用角动量守恒和力矩原理分析直升机飞行稳定性",
                         content: "模拟双机翼直升机飞行过程，分析角动量守恒在飞行控制中的应用。研究力矩对直升机姿态调整的影响。",
                         difficulty: "advanced",
                         geogebraUrl: "https://www.geogebra.org/m/hcxcug3b",
                         knowledgePoints: ["角动量守恒", "力矩"]
+                    },
+                    {
+                        id: 19,
+                        title: "工程应用仿真-火箭发射过程虚拟仿真",
+                        purpose: "应用动量守恒定律分析火箭推进原理",
+                        content: "模拟火箭发射过程，分析燃料喷射与火箭速度变化的关系。研究多级火箭的工作原理，优化发射参数。",
+                        difficulty: "advanced",
+                        geogebraUrl: "https://www.geogebra.org/m/vgehaesw",
+                        knowledgePoints: ["动量守恒定律"]
                     }
                 ]
             },
@@ -597,7 +669,7 @@
             electromagnetism: {
                 phenomenon: [
                     {
-                        id: 12,
+                        id: 20,
                         title: "一对异种电荷形成的电场中电场线虚拟仿真",
                         purpose: "可视化电场分布，理解电场线的物理意义",
                         content: "观察一对异种电荷的电场线分布，分析电场强度的空间变化。研究等势面与电场线的关系，验证电场线性质。",
@@ -606,7 +678,7 @@
                         knowledgePoints: ["电场线"]
                     },
                     {
-                        id: 13,
+                        id: 21,
                         title: "磁聚焦现象仿真",
                         purpose: "理解洛伦兹力作用下的粒子运动，掌握磁聚焦原理",
                         content: "模拟带电粒子在磁场中的运动，观察磁聚焦现象。分析洛伦兹力对粒子轨迹的影响，研究磁聚焦的条件和应用。",
@@ -615,7 +687,7 @@
                         knowledgePoints: ["洛伦兹力", "复合场"]
                     },
                     {
-                        id: 14,
+                        id: 22,
                         title: "带电粒子磁场中洛伦兹力现象仿真",
                         purpose: "验证洛伦兹力公式，理解带电粒子在磁场中的运动规律",
                         content: "观察带电粒子在均匀磁场中的运动轨迹，验证洛伦兹力公式。分析粒子速度、电荷量和磁场强度对轨迹的影响。",
@@ -626,9 +698,9 @@
                 ],
                 engineering: [
                     {
-                        id: 15,
+                        id: 23,
                         title: "工程应用仿真-卫星定位系统",
-                        purpose: "理解机械波和电磁波在卫星定位中的应用原理",
+                        purpose: "理解电磁波在卫星定位中的应用原理",
                         content: "模拟卫星定位系统的工作原理，分析信号传播时间与位置计算的关系。研究多路径效应对定位精度的影响。",
                         difficulty: "advanced",
                         geogebraUrl: "https://www.geogebra.org/m/w4dsm3q4",
@@ -639,7 +711,7 @@
             optics: {
                 phenomenon: [
                     {
-                        id: 16,
+                        id: 24,
                         title: "马吕斯定律虚拟仿真",
                         purpose: "验证马吕斯定律，理解线偏振光的特性",
                         content: "观察偏振片对线偏振光强度的影响，验证马吕斯定律。分析偏振方向与光强的关系，研究偏振光的应用。",
@@ -648,7 +720,7 @@
                         knowledgePoints: ["马吕斯定律"]
                     },
                     {
-                        id: 17,
+                        id: 25,
                         title: "反射光和折射光的偏振现象仿真",
                         purpose: "验证布儒斯特定律，理解反射光和折射光的偏振特性",
                         content: "观察光在介质界面反射和折射时的偏振变化，测量布儒斯特角。验证布儒斯特定律，分析偏振光的产生机制。",
@@ -657,7 +729,7 @@
                         knowledgePoints: ["布儒斯特定律"]
                     },
                     {
-                        id: 18,
+                        id: 26,
                         title: "等倾干涉现象仿真",
                         purpose: "理解等倾干涉原理，掌握干涉条纹的形成规律",
                         content: "观察等倾干涉现象，分析干涉条纹的分布特点。研究薄膜厚度和入射角对干涉条纹的影响，验证等倾干涉条件。",
@@ -671,7 +743,7 @@
             modern: {
                 phenomenon: [
                     {
-                        id: 19,
+                        id: 27,
                         title: "黑体辐射现象仿真",
                         purpose: "理解黑体辐射规律，掌握普朗克辐射公式",
                         content: "模拟黑体辐射现象，观察辐射能量随波长和温度的变化。验证普朗克辐射公式，分析维恩位移定律和斯特藩-玻尔兹曼定律。",
