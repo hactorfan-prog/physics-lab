@@ -666,12 +666,12 @@
     phenomenon: [
         {
             id: 28,
-            title: "理想气体压强与温度变化现象仿真",
-            purpose: "理解理想气体压强的微观本质，掌握压强与温度、分子数密度的关系",
+            title: "理想气体压强与温度的变化现象仿真",
+            purpose: "理解理想气体压强的微观本质，掌握压强、温度、分子数密度、速率分布之间的关系",
             content: "通过模拟理想气体分子运动，观察温度变化对分子运动速度和压强的影响。验证理想气体状态方程，分析分子数密度对压强的贡献。",
             difficulty: "intermediate",
-            geogebraUrl: "理想气体压强.html",
-            knowledgePoints: ["理想气体", "压强", "温度"]
+            geogebraUrl: "理想气体压强温度速率分布.html",
+            knowledgePoints: ["理想气体", "压强", "温度", "速率分布"]
         },
         {
             id: 29,
@@ -681,6 +681,15 @@
             difficulty: "intermediate",
             geogebraUrl: "热力学第一定律.html",
             knowledgePoints: ["热力学第一定律", "等值过程"]
+        },
+{
+            id: 31,  // 使用新ID 31
+            title: "卡诺热机循环虚拟仿真",
+            purpose: "理解卡诺热机循环的工作原理，掌握热机效率的计算方法",
+            content: "模拟卡诺热机的四个过程：等温膨胀、绝热膨胀、等温压缩和绝热压缩。观察热机工作过程中能量转换和状态变化，计算热机效率。",
+            difficulty: "advanced",
+            geogebraUrl: "热机循环.html",
+            knowledgePoints: ["卡诺循环", "热机效率", "等温过程", "绝热过程"]
         }
     ],
     engineering: []
@@ -713,8 +722,26 @@
                         difficulty: "intermediate",
                         geogebraUrl: "https://www.geogebra.org/m/rjhe5fkb",
                         knowledgePoints: ["洛伦兹力"]
-                    }
-                ],
+                    },
+ {
+            id: 30,  // 使用新ID 30
+            title: "霍尔效应现象仿真",
+            purpose: "理解霍尔效应原理，掌握霍尔电压与磁场、电流的关系",
+            content: "模拟霍尔效应中电子在磁场和电场中的受力与运动状态，展示电荷积累与平衡过程。观察霍尔电压随磁场和电流的变化规律。",
+            difficulty: "intermediate",
+            geogebraUrl: "霍尔效应现象仿真.html",
+            knowledgePoints: ["霍尔效应", "洛伦兹力", "霍尔电压"]
+        },
+             {
+    id: 31,
+    title: "感生电动势 - 涡旋电流现象仿真",
+    purpose: "理解感生电动势和涡旋电流的产生原理，掌握法拉第电磁感应定律和楞次定律",
+    content: "模拟磁场变化时导体环中感生电动势和涡旋电流的产生过程。观察磁场方向、强度变化对感生电场和电流的影响。验证法拉第电磁感应定律和楞次定律，分析不同磁场变化模式下的感应电流特性。",
+    difficulty: "advanced",
+    geogebraUrl: "感生电动势 - 涡旋电流现象仿真.html",
+    knowledgePoints: ["法拉第电磁感应定律", "楞次定律", "涡旋电流"]
+}
+   ],
                 engineering: [
                     {
                         id: 23,
@@ -755,7 +782,34 @@
                         difficulty: "advanced",
                         geogebraUrl: "https://www.geogebra.org/m/yundfru4",
                         knowledgePoints: ["等倾干涉"]
-                    }
+                    },
+{
+    id: 40,
+    title: "杨氏双缝干涉现象仿真",
+    purpose: "理解光的干涉原理，掌握双缝干涉条纹的形成规律和计算方法",
+    content: "模拟杨氏双缝干涉实验，观察干涉条纹的分布特点。调节波长、双缝间距和缝屏距离，分析条纹间距的变化规律。验证干涉条纹公式，理解光程差与干涉级次的关系。",
+    difficulty: "intermediate",
+    geogebraUrl: "杨氏双缝干涉现象仿真.html",
+    knowledgePoints: ["光的干涉", "双缝干涉", "光程差"]
+},
+{
+    id: 41,
+    title: "等厚干涉现象仿真",
+    purpose: "理解等厚干涉原理，掌握劈尖干涉条纹的形成规律和棱边状态判断",
+    content: "模拟劈尖等厚干涉现象，观察条纹的等间距分布。调节劈尖角、波长和折射率，分析条纹间距的变化。研究不同折射率组合下的棱边亮暗纹状态，验证光程差公式。",
+    difficulty: "advanced",
+    geogebraUrl: "等厚干涉现象仿真.html",
+    knowledgePoints: ["等厚干涉", "劈尖干涉", "光程差"]
+},
+{
+    id: 42,
+    title: "夫琅禾费单缝衍射现象仿真",
+    purpose: "理解光的衍射原理，掌握单缝衍射的光强分布和暗纹条件",
+    content: "模拟夫琅禾费单缝衍射实验，观察衍射图样的光强分布。调节单缝宽度、波长和透镜焦距，分析中央明纹和各级明暗纹的变化。验证衍射公式和半波带理论，理解衍射与干涉的区别。",
+    difficulty: "intermediate",
+    geogebraUrl: "夫琅禾费单缝衍射现象仿真.html",
+    knowledgePoints: ["光的衍射", "单缝衍射", "半波带法"]
+}
                 ],
                 engineering: []
             },

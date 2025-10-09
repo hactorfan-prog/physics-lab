@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霍尔效应现象仿真</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .slider-thumb::-webkit-slider-thumb {
+                @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-dark">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 标题区域 -->
+       <header class="mb-8">
+           <div class="flex justify-between items-center">
+               <div class="text-center flex-1">
+                   <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-dark mb-2">霍尔效应现象仿真</h1>
+                   <p class="text-gray-600 max-w-3xl mx-auto">
+                       交互式模拟霍尔效应中电子在磁场和电场中的受力与运动状态，展示电荷积累与平衡过程
+                   </p>
+               </div>
+               <div class="text-right text-gray-500 text-sm">
+                   作者：xatu_bai
+               </div>
+           </div>
+       </header>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 控制卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fa fa-sliders text-primary mr-2"></i>参数控制
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <!-- 磁感应强度控制 -->
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label for="B" class="font-medium">磁感应强度 (B)</label>
+                                <span id="B-value" class="text-primary font-semibold">1.0 T</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                id="B" 
+                                min="0" 
+                                max="2" 
+                                step="0.1" 
+                                value="1"
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            >
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>0 T</span>
+                                <span>2 T</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 电荷速度控制 -->
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label for="velocity" class="font-medium">电子进入磁场的速率</label>
+                                <span id="velocity-value" class="text-primary font-semibold">中速</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                id="velocity" 
+                                min="0.5" 
+                                max="2" 
+                                step="0.1" 
+                                value="1"
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            >
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>慢速</span>
+                                <span>快速</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 磁场方向控制 -->
+                        <div>
+                            <label class="font-medium block mb-2">磁场方向</label>
+                            <div class="flex space-x-4">
+                                <button id="B-in" class="bg-primary text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-center">
+                                    <i class="fa fa-times mr-2"></i>向里
+                                </button>
+                                <button id="B-out" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-center">
+                                    <i class="fa fa-circle mr-2"></i>向外
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 控制按钮组 -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <button 
+                                id="startPause" 
+                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center"
+                            >
+                                <i class="fa fa-play mr-2"></i>开始
+                            </button>
+                            <button 
+                                id="reset" 
+                                class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center"
+                            >
+                                <i class="fa fa-refresh mr-2"></i>重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 物理参数卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fa fa-calculator text-accent mr-2"></i>物理参数
+                    </h2>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between pb-2 border-b border-gray-100">
+                            <span class="text-gray-600">霍尔电场强度E<sub>H</sub>:</span>
+                            <span id="E-hall" class="font-medium">0.0 V/m</span>
+                        </div>
+                  <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+    <span class="text-gray-600">霍尔电压:</span>
+    <div class="flex items-center">
+        <span class="text-xs text-black-500 mr-1">U<sub>H</sub> = E<sub>H</sub>×d=</span>
+        <span id="hall-voltage" class="font-medium">0.0 V</span>
+    </div>
+</div>
+                        <div class="flex justify-between pb-2 border-b border-gray-100">
+                            <span class="text-gray-600">导体侧面积累电荷数:</span>
+                            <span id="top-charge" class="font-medium">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">电子电荷量:</span>
+                            <span class="font-medium">-1.6e-19 C</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧主内容区 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 仿真卡片 -->
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fa fa-area-chart text-secondary mr-2"></i>仿真区域
+                        </h2>
+                        <div class="bg-blue-50 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                            电场力大小 / 洛伦兹力大小=平衡度=<span id="balance" class="font-bold">0</span>%
+                        </div>
+                    </div>
+                    
+                    <!-- 力信息显示 -->
+                    <div class="bg-gray-50 p-3 rounded-lg mb-3 flex flex-wrap gap-6 text-sm">
+                        <div>
+                            <span class="font-medium text-blue-600">洛伦兹力:</span>
+                            <span id="lorentz-force">大小: 0.0 N, 方向: 向上</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-red-600">电场力:</span>
+                            <span id="electric-force">大小: 0.0 N, 方向: 向下</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 仿真画布容器 -->
+                    <div class="relative w-full bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                        <canvas id="sim" width="800" height="400" class="w-full"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 霍尔效应说明卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fa fa-book text-primary mr-2"></i>霍尔效应原理
+                    </h2>
+                    
+                    <div class="prose prose-sm max-w-none text-gray-700">
+                        <p>霍尔效应是指导体中的载流子在磁场中受到洛伦兹力作用而发生偏转，在导体两侧产生电荷积累，形成横向电场的现象。</p>
+                        
+                        <h3 class="text-base font-semibold mt-3 mb-2">现象解释:</h3>
+                        <ol class="list-decimal pl-5 space-y-1">
+                            <li>电子在电场作用下定向移动形成电流</li>
+                            <li>磁场中的运动电子受到洛伦兹力发生偏转</li>
+                            <li>电荷在导体两侧积累形成霍尔电场</li>
+                            <li>当电场力与洛伦兹力平衡时，电子沿直线运动</li>
+                        </ol>
+                        
+                        <h3 class="text-base font-semibold mt-3 mb-2">应用:</h3>
+                        <p>霍尔效应广泛应用于磁场测量、电流传感器、位置检测等领域，是许多现代电子设备的重要物理基础。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>霍尔效应现象仿真 &copy; 2023 | 交互式物理仿真演示</p>
+        </footer>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('sim');
+        const ctx = canvas.getContext('2d');
+        const BSlider = document.getElementById('B');
+        const velocitySlider = document.getElementById('velocity');
+        const resetBtn = document.getElementById('reset');
+        const startPauseBtn = document.getElementById('startPause');
+        const balanceEl = document.getElementById('balance');
+        const BValueEl = document.getElementById('B-value');
+        const velocityValueEl = document.getElementById('velocity-value');
+        const EHallEl = document.getElementById('E-hall');
+        const hallVoltageEl = document.getElementById('hall-voltage');
+        const topChargeEl = document.getElementById('top-charge');
+        const lorentzForceEl = document.getElementById('lorentz-force');
+        const electricForceEl = document.getElementById('electric-force');
+        const BInBtn = document.getElementById('B-in');
+        const BOutBtn = document.getElementById('B-out');
+
+        // 仿真控制变量
+        let isPaused = true; // 默认停止状态
+        let animationId = null;
+        let electronsPassedAfterBalance = 0; // 平衡后通过的电子数
+
+        // 物理参数
+        const params = {
+            B: 1,          // 磁感应强度
+            BDirection: 'in', // 磁场方向: 'in' 向里, 'out' 向外
+            velocityFactor: 1, // 速度因子
+            E_hall: 0,     // 霍尔电场强度
+            q: -1.6e-19,   // 电子电荷量（负）
+            balance: 0,    // 平衡度（0-1）
+            topCharge: 0,  // 上极板净电荷数
+            spacing: 35,   // 电子间距
+            rows: 10,      // 行数
+            lastSpawnTime: 0, 
+            spawnInterval: 150, // 电子生成间隔
+            electronRadius: 9,  // 增大电子半径
+            plateDistance: 320,  // 上下极板距离（用于计算霍尔电压）
+            baseVelocity: -100,  // 基础电子速度
+            epsilon0: 8.854e-12, // 真空介电常数
+            plateArea: 0.01,     // 极板面积（假设为0.01平方米）
+            E_scaling: 1e5      // 增大电场强度缩放因子，加快平衡过程
+        };
+
+        // 导体边界计算
+        const conductorTop = 40 + params.electronRadius;    // 上极板内侧
+        const conductorBottom = canvas.height - 40 - params.electronRadius; // 下极板内侧
+        params.rows = Math.floor((conductorBottom - conductorTop) / params.spacing) + 1;
+
+        // 创建导体纹理
+        function createConductorTexture() {
+            const textureCanvas = document.createElement('canvas');
+            textureCanvas.width = 30;
+            textureCanvas.height = 30;
+            const textureCtx = textureCanvas.getContext('2d');
+            
+            // 创建金属质感渐变
+            const gradient = textureCtx.createLinearGradient(0, 0, 30, 30);
+            gradient.addColorStop(0, '#d0d0d0');
+            gradient.addColorStop(0.5, '#e8e8e8');
+            gradient.addColorStop(1, '#d0d0d0');
+            
+            textureCtx.fillStyle = gradient;
+            textureCtx.fillRect(0, 0, 30, 30);
+            
+            // 添加金属光泽
+            textureCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            textureCtx.lineWidth = 1;
+            
+            // 绘制光泽线条
+            for (let i = 0; i <= 30; i += 6) {
+                textureCtx.beginPath();
+                textureCtx.moveTo(i, 0);
+                textureCtx.lineTo(i, 30);
+                textureCtx.stroke();
+                
+                textureCtx.beginPath();
+                textureCtx.moveTo(0, i);
+                textureCtx.lineTo(30, i);
+                textureCtx.stroke();
+            }
+            
+            // 添加一些随机高光点
+            textureCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let i = 0; i < 8; i++) {
+                const x = Math.random() * 30;
+                const y = Math.random() * 30;
+                const size = Math.random() * 2 + 1;
+                textureCtx.beginPath();
+                textureCtx.arc(x, y, size, 0, Math.PI * 2);
+                textureCtx.fill();
+            }
+            
+            return textureCanvas;
+        }
+
+            // 创建电子渐变 - 增加透明度
+function createElectronGradient(x, y, r, color) {
+    const gradient = ctx.createRadialGradient(
+        x, y, 0,
+        x, y, r
+    );
+    
+    if (color === 'blue') {
+        gradient.addColorStop(0, 'rgba(106, 183, 255, 0.8)'); // 增加透明度
+        gradient.addColorStop(0.7, 'rgba(30, 136, 229, 0.6)'); // 增加透明度
+        gradient.addColorStop(1, 'rgba(13, 71, 161, 0.4)'); // 增加透明度
+    } else if (color === 'red') {
+        gradient.addColorStop(0, 'rgba(255, 138, 128, 0.8)'); // 增加透明度
+        gradient.addColorStop(0.7, 'rgba(244, 67, 54, 0.6)'); // 增加透明度
+        gradient.addColorStop(1, 'rgba(183, 28, 28, 0.4)'); // 增加透明度
+    }
+    
+    return gradient;
+}
+
+        // 电子类
+        class Electron {
+            constructor(batchId, row) {
+                this.batchId = batchId;
+                this.row = row;
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width + 50 + this.batchId * params.spacing; // 右侧生成
+                this.y = conductorTop + this.row * params.spacing; // 初始纵向位置
+                this.baseVx = params.baseVelocity; // 固定向左漂移速度
+                this.vx = this.baseVx * params.velocityFactor; // 考虑速度因子的实际速度
+                this.vy = 0;  // 初始纵向速度为0
+                this.r = params.electronRadius;
+                this.enteredMagneticField = false;
+                this.active = true;
+                this.rotation = Math.random() * Math.PI * 2; // 随机初始旋转角度
+                this.rotationSpeed = (Math.random() - 0.5) * 0.1; // 随机旋转速度
+                this.passedAfterBalance = false; // 是否在平衡后通过的
+            }
+
+            update(dt) {
+                if (!this.active || isPaused) return;
+                
+                               
+                // 进入磁场区域（x∈[100,700]）
+                if (!this.enteredMagneticField && this.x <= 700 && this.x >= 100) {
+                    this.enteredMagneticField = true;
+                }
+                
+                // 磁场中受力与加速度计算
+                let F_lorentz = 0, F_electric = 0, a = 0;
+                
+                // 关键修改：只有当磁场不为0时才计算洛伦兹力和电荷积累
+                if (this.enteredMagneticField && params.B > 0) {
+                    // 1. 洛伦兹力：根据磁场方向计算方向
+                    // 使用右手螺旋定则，考虑电子带负电
+                    // 磁场向里(×)时，洛伦兹力向上；磁场向外(·)时，洛伦兹力向下
+                    const lorentzDirection = params.BDirection === 'in' ? 1 : -1;
+                    F_lorentz = lorentzDirection * Math.abs(-params.q * this.vx * params.B);
+                    
+                    // 2. 电场力：根据电荷积累计算
+                    // 电场强度 E = σ / ε0 = (Q/A) / ε0
+                    const surfaceChargeDensity = params.topCharge * params.q / params.plateArea;
+                    params.E_hall = -surfaceChargeDensity / params.epsilon0 * params.E_scaling;
+                    F_electric = Math.abs(params.q * params.E_hall);
+                    
+                    // 更新力的显示（使用第一个进入磁场的电子作为参考）
+                    if (electrons.indexOf(this) === 0) {
+                        updateForceDisplay(F_lorentz, F_electric);
+                    }
+                    
+                    // 3. 加速度：仅未平衡时存在
+                    if (params.balance < 1) {
+                        // 洛伦兹力方向：磁场向里时向上，磁场向外时向下
+                        const lorentzAcceleration = F_lorentz / 9.1e-31 * 8e-12;
+                        // 电场力方向：总是与洛伦兹力相反
+                        const electricAcceleration = -Math.sign(lorentzDirection) * F_electric / 9.1e-31 * 8e-12;
+                        
+                        a = -lorentzAcceleration - electricAcceleration;
+                    } else {
+                        a = 0; // 平衡后无加速度
+                        this.vy = 0; // 强制纵向速度为0（直线运动）
+                    }
+                } else if (params.B > 0) {
+                    // 即使电子未进入磁场区域，也计算并显示洛伦兹力
+                    const lorentzDirection = params.BDirection === 'in' ? 1 : -1;
+                    F_lorentz = lorentzDirection * Math.abs(-params.q * this.vx * params.B);
+                    updateForceDisplay(F_lorentz, Math.abs(params.q * params.E_hall));
+                } else {
+                    // 关键修改：当磁场为0时，重置相关参数
+                    F_lorentz = 0;
+                    F_electric = 0;
+                    a = 0;
+                    this.vy = 0;
+                    
+                    // 更新力的显示
+                    if (electrons.indexOf(this) === 0) {
+                        updateForceDisplay(0, 0);
+                    }
+                }
+                
+                this.vy += a * dt; // 更新纵向速度
+                
+                // 更新位置
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // 关键修改：只有当磁场不为0时才进行电荷积累
+                if (params.B > 0 && params.balance < 1 && (this.y <= conductorTop || this.y >= conductorBottom)) {
+                    // 根据磁场方向判断电荷积累方向
+                    // 磁场向里(×)时，电子向上偏转，上极板带负电
+                    // 磁场向外(·)时，电子向下偏转，上极板带正电
+                    const chargeFactor = params.BDirection === 'in' ? -1 : 1;
+                    
+                    params.topCharge += chargeFactor; 
+                    
+                    // 重新计算电场强度
+                    const surfaceChargeDensity = params.topCharge * params.q / params.plateArea;
+                    params.E_hall = -surfaceChargeDensity / params.epsilon0 * params.E_scaling;
+                    
+                    // 平衡度计算：电场力大小 / 洛伦兹力大小
+                    const F_lorentz_abs = Math.abs(-params.q * this.vx * params.B);
+                    const F_electric_abs = Math.abs(params.q * params.E_hall);
+                    params.balance = F_lorentz_abs > 0 
+                        ? Math.min(1, F_electric_abs / F_lorentz_abs) 
+                        : 0;
+                    
+                    this.active = false; // 电子被捕获
+                }
+
+                // 左侧离开边界
+                if (this.x < -this.r) {
+                    // 如果已经平衡，则计数
+                    if (params.balance >= 1 && !this.passedAfterBalance) {
+                        electronsPassedAfterBalance++;
+                        this.passedAfterBalance = true;
+                        
+                        // 如果平衡后已经有200个电子通过，自动停止
+                        if (electronsPassedAfterBalance >= 100) {
+                            isPaused = true;
+                            startPauseBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始';
+                            startPauseBtn.classList.remove('bg-secondary');
+                            startPauseBtn.classList.add('bg-green-600');
+                            if (animationId) {
+                                cancelAnimationFrame(animationId);
+                                animationId = null;
+                            }
+                        }
+                    }
+                    this.active = false;
+                }
+
+                // 更新显示值
+                updateDisplayValues();
+            }
+
+            draw() {
+            if (!this.active) return;
+    
+    // 电子颜色：平衡后红色，未平衡蓝色
+    const electronColor = params.balance >= 1 ? 'red' : 'blue';
+    
+    // 绘制电子主体
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // 移除了旋转，使电子不旋转
+    
+    // 使用纯色填充电子
+    if (electronColor === 'blue') {
+        ctx.fillStyle = '#1e88e5'; // 纯蓝色
+    } else {
+        ctx.fillStyle = '#f44336'; // 纯红色
+    }
+    
+    // 绘制电子主体
+    ctx.beginPath();
+    ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 添加白色减号
+    ctx.fillStyle = 'white'; // 白色
+    ctx.fillRect(-this.r/2, -this.r/8, this.r, this.r/4); // 绘制水平减号
+    
+    ctx.restore();
+
+    // 仅未平衡且磁场不为0时显示受力矢量
+    if (this.enteredMagneticField && params.B > 0 && params.balance < 1) {
+        const lorentzDirection = params.BDirection === 'in' ? 1 : -1;
+        const F_lorentz = lorentzDirection * Math.abs(-params.q * this.vx * params.B);
+        const F_electric = Math.abs(params.q * params.E_hall);
+        
+        // 洛伦兹力（蓝色）
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x, this.y + F_lorentz * 1e13);
+        ctx.stroke();
+
+        // 电场力（红色）- 方向与洛伦兹力相反
+        ctx.strokeStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x, this.y - F_electric * 1e13);
+        ctx.stroke();
+        
+        ctx.lineWidth = 1;
+    }
+}
+        }
+
+        // 更新力的显示
+       function updateForceDisplay(lorentz, electric) {
+    // 洛伦兹力方向
+    const lorentzDirection = params.BDirection === 'in' ? '向上' : '向下';
+    
+    // 使用绝对值显示洛伦兹力大小
+    const absLorentz = Math.abs(lorentz);
+    lorentzForceEl.textContent = `大小: ${absLorentz.toExponential(2)} N, 方向: ${lorentzDirection}`;
+    
+    // 电场力方向与洛伦兹力相反
+    const electricDirection = params.BDirection === 'in' ? '向下' : '向上';
+    electricForceEl.textContent = `大小: ${electric.toExponential(2)} N, 方向: ${electricDirection}`;
+}
+
+        // 更新显示值
+        function updateDisplayValues() {
+            balanceEl.textContent = (params.balance * 100).toFixed(0);
+           EHallEl.textContent = Math.abs(params.E_hall).toExponential(2) + ' V/m';
+            
+            // 计算霍尔电压 (电场强度 × 极板间距)
+            const hallVoltage = Math.abs(params.E_hall) * (params.plateDistance / 1000); // 转换为米
+            hallVoltageEl.textContent = hallVoltage.toExponential(2) + ' V';
+            
+            topChargeEl.textContent = Math.abs(params.topCharge);
+        }
+
+        // 绘制静态场景（导体和磁场）
+        function drawStaticScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+// 在导体左侧显示极板间距d
+ctx.fillStyle = 'black';
+ctx.font = '18px Arial';
+ctx.textAlign = 'center';
+
+// 绘制左侧标注线和文字
+const leftX = 40; // 左侧标注线的x坐标
+const topY = 40;  // 上极板y坐标
+const bottomY = 360; // 下极板y坐标
+
+// 绘制标注线
+ctx.strokeStyle = 'black';
+ctx.lineWidth = 1;
+ctx.beginPath();
+ctx.moveTo(leftX, topY);
+ctx.lineTo(leftX, bottomY);
+ctx.stroke();
+
+// 绘制箭头
+const arrowSize = 5;
+ctx.beginPath();
+ctx.moveTo(leftX, topY);
+ctx.lineTo(leftX - arrowSize, topY + arrowSize);
+ctx.lineTo(leftX + arrowSize, topY + arrowSize);
+ctx.fill();
+
+ctx.beginPath();
+ctx.moveTo(leftX, bottomY);
+ctx.lineTo(leftX - arrowSize, bottomY - arrowSize);
+ctx.lineTo(leftX + arrowSize, bottomY - arrowSize);
+ctx.fill();
+
+// 绘制d的数值
+const midY = (topY + bottomY) / 2;
+ctx.save();
+ctx.translate(leftX - 20, midY);
+ctx.rotate(-Math.PI/2); // 旋转文字使其垂直
+ctx.fillText('d = 0.32 m', 0, 0);
+ctx.restore();
+            // 绘制导体内部纹理
+            const conductorTexture = createConductorTexture();
+            const pattern = ctx.createPattern(conductorTexture, 'repeat');
+            ctx.fillStyle = pattern;
+            ctx.fillRect(50, 40, 700, 320);
+            
+            // 绘制导体边框
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.strokeRect(50, 40, 700, 320);
+            ctx.setLineDash([]);
+            
+            // 绘制上下极板
+            ctx.strokeStyle = '#c62828';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(50, 40);
+            ctx.lineTo(750, 40);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(50, 360);
+            ctx.lineTo(750, 360);
+            ctx.stroke();
+            
+            // 添加极板厚度效果
+            ctx.fillStyle = '#b71c1c';
+            ctx.fillRect(50, 37, 700, 3);
+            ctx.fillRect(50, 360, 700, 3);
+            
+            // 绘制磁场（向里的×或向外的·）- 增大符号，减少数目
+            // 关键修改：只有当磁场不为0时才绘制磁场符号
+            if (params.B > 0) {
+                ctx.fillStyle = 'rgba(0, 100, 0, 0.7)';
+                const fieldSymbol = params.BDirection === 'in' ? '×' : '·';
+                // 根据磁场方向设置字体大小
+                if (params.BDirection === 'out') {
+                    ctx.font = '70px Arial'; // 向外符号使用大字体
+                } else {
+                    ctx.font = '30px Arial'; // 向内符号使用原字体
+                }
+                // 减少符号数目，增加间距
+                let spacing = 90; // 将间距改为60
+
+                for (let y = 80; y < 360; y += spacing) {
+                    for (let x = 150; x < 650; x += spacing) {
+                        ctx.fillText(fieldSymbol, x, y);
+                    }
+                }
+            }
+        
+
+            // 绘制磁场方向指示
+           ctx.fillStyle = 'black';
+ctx.font = '18px Arial';
+ const directionText = params.BDirection === 'in' ? '磁场方向 (向里)' : '磁场方向 (向外)';
+            ctx.fillText(directionText, 350, 30);
+        }
+
+        // 电子生成逻辑
+        const electrons = [];
+        let batchId = 0;
+        function spawnElectronColumn() {
+            if (isPaused) return;
+            
+            for (let row = 0; row < params.rows; row++) {
+                electrons.push(new Electron(batchId, row));
+            }
+            batchId++;
+        }
+
+        // 动画循环
+        function animate(timestamp) {
+            if (isPaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 定期生成电子
+            if (timestamp - params.lastSpawnTime > params.spawnInterval) {
+                spawnElectronColumn();
+                params.lastSpawnTime = timestamp;
+            }
+            
+            // 绘制静态场景
+            drawStaticScene();
+            
+            // 更新并绘制电子
+            electrons.forEach(e => {
+                e.update(0.016);
+                e.draw();
+            });
+
+            // 移除不活跃电子
+            for (let i = electrons.length - 1; i >= 0; i--) {
+                if (!electrons[i].active) {
+                    electrons.splice(i, 1);
+                }
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // 开始/暂停按钮事件
+        startPauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            
+            if (isPaused) {
+                startPauseBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始';
+                startPauseBtn.classList.remove('bg-secondary');
+                startPauseBtn.classList.add('bg-green-600');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            } else {
+                startPauseBtn.innerHTML = '<i class="fa fa-pause mr-2"></i>暂停';
+                startPauseBtn.classList.remove('bg-green-600');
+                startPauseBtn.classList.add('bg-secondary');
+                animationId = requestAnimationFrame(animate);
+            }
+        });
+
+        // 磁场方向按钮事件
+        BInBtn.addEventListener('click', () => {
+            params.BDirection = 'in';
+            updateBDirectionButtons();
+            // 关键修改：当改变磁场方向时，重置相关参数
+            params.E_hall = 0;
+            params.balance = 0;
+            params.topCharge = 0;
+            electronsPassedAfterBalance = 0;
+            updateDisplayValues();
+            drawStaticScene(); // 重新绘制静态场景
+        });
+
+        BOutBtn.addEventListener('click', () => {
+            params.BDirection = 'out';
+            updateBDirectionButtons();
+            // 关键修改：当改变磁场方向时，重置相关参数
+            params.E_hall = 0;
+            params.balance = 0;
+            params.topCharge = 0;
+            electronsPassedAfterBalance = 0;
+            updateDisplayValues();
+            drawStaticScene(); // 重新绘制静态场景
+        });
+
+        // 更新磁场方向按钮状态
+        function updateBDirectionButtons() {
+            if (params.BDirection === 'in') {
+                BInBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                BInBtn.classList.add('bg-primary', 'text-white');
+                BOutBtn.classList.remove('bg-primary', 'text-white');
+                BOutBtn.classList.add('bg-gray-200', 'text-gray-700');
+            } else {
+                BOutBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                BOutBtn.classList.add('bg-primary', 'text-white');
+                BInBtn.classList.remove('bg-primary', 'text-white');
+                BInBtn.classList.add('bg-gray-200', 'text-gray-700');
+            }
+        }
+
+        // 控件事件：磁感应强度变化
+        BSlider.addEventListener('input', () => {
+            params.B = parseFloat(BSlider.value);
+            BValueEl.textContent = params.B.toFixed(1) + ' T';
+            
+            // 关键修改：当磁场为0时，重置相关参数
+            if (params.B === 0) {
+                params.E_hall = 0;
+                params.balance = 0;
+                params.topCharge = 0;
+                electronsPassedAfterBalance = 0;
+            }
+            
+            updateDisplayValues();
+            drawStaticScene(); // 重新绘制静态场景
+        });
+
+        // 控件事件：速度变化
+        velocitySlider.addEventListener('input', () => {
+            params.velocityFactor = parseFloat(velocitySlider.value);
+            
+            // 更新速度显示文本
+            let velocityText = "慢速";
+            if (params.velocityFactor > 1.5) velocityText = "快速";
+            else if (params.velocityFactor > 0.7) velocityText = "中速";
+            velocityValueEl.textContent = velocityText;
+            
+            // 更新所有电子的速度
+            electrons.forEach(e => {
+                e.vx = e.baseVx * params.velocityFactor;
+            });
+        });
+
+        // 重置按钮事件
+        resetBtn.addEventListener('click', () => {
+            // 添加按钮点击动画
+            resetBtn.classList.add('scale-95', 'bg-primary/80');
+            setTimeout(() => {
+                resetBtn.classList.remove('scale-95', 'bg-primary/80');
+            }, 150);
+            
+            // 重置参数
+            params.B = parseFloat(BSlider.value);
+            params.velocityFactor = parseFloat(velocitySlider.value);
+            params.E_hall = 0;
+            params.balance = 0;
+            params.topCharge = 0;
+            electronsPassedAfterBalance = 0;
+            
+            // 重置电子
+            electrons.length = 0;
+            batchId = 0;
+            
+            // 确保重置后处于停止状态
+            if (!isPaused) {
+                isPaused = true;
+                startPauseBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始';
+                startPauseBtn.classList.remove('bg-secondary');
+                startPauseBtn.classList.add('bg-green-600');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            }
+            
+            // 绘制静态场景（回到初始状态）
+            drawStaticScene();
+            
+            // 更新显示
+            updateDisplayValues();
+        });
+
+        // 初始化显示值
+        BValueEl.textContent = params.B.toFixed(1) + ' T';
+        velocityValueEl.textContent = "中速";
+        updateBDirectionButtons();
+        updateDisplayValues();
+        
+        // 初始化绘制静态场景（导体和磁场）
+        drawStaticScene();
+    </script>
+</body>
+</html>
