@@ -697,33 +697,37 @@ title: {
             patternCtx.font = '10px sans-serif';
             patternCtx.textAlign = 'center';
 
-            // 绘制各级明纹的信息
-            data.brightPositions.forEach(bright => {
-                const xPos = screenCenterX + bright.x * mmToPixel;
-                
-                // 只绘制在屏幕范围内的明纹信息
-                if (xPos > screenLeftX && xPos < screenLeftX + screenWidth) {
-                    // 明纹级次
-                    let label = `${bright.order}级明纹`;
-                    if (bright.order === 0) {
-                        label = '中央明纹';
-                    }
-                    
-                    // 衍射角（转换为度）
-                    const thetaDeg = (bright.theta * 180 / Math.PI).toFixed(3);
-                    
-                    // 半波带数目
-                    const zonesText = `半波带: ${bright.halfWaveZones}个`;
-                    
-                    // 衍射角文本
-                    const thetaText = `θ: ${thetaDeg}°`;
-                    
-                    // 绘制文本，垂直分布显示所有信息
-                    patternCtx.fillText(label, xPos, screenY - 5);
-                    patternCtx.fillText(thetaText, xPos, screenY - 15);
-                    patternCtx.fillText(zonesText, xPos, screenY - 25);
-                }
-            });
+          // 绘制各级明纹的信息
+data.brightPositions.forEach(bright => {
+    const xPos = screenCenterX + bright.x * mmToPixel;
+    
+    // 只绘制在屏幕范围内的明纹信息
+    if (xPos > screenLeftX && xPos < screenLeftX + screenWidth) {
+        // 明纹级次
+        let label = `${bright.order}级明纹`;
+        if (bright.order === 0) {
+            label = '中央明纹';
+        }
+        
+        // 衍射角（转换为度）
+        const thetaDeg = (bright.theta * 180 / Math.PI).toFixed(3);
+        
+        // 半波带数目
+        const zonesText = `半波带: ${bright.halfWaveZones}个`;
+        
+        // 衍射角文本
+        const thetaText = `θ: ${thetaDeg}°`;
+        
+        // 绘制文本，垂直分布显示所有信息
+        patternCtx.fillText(label, xPos, screenY - 5);
+        patternCtx.fillText(thetaText, xPos, screenY - 15);
+        
+        // 只有当衍射角不为0时才显示半波带数目
+        if (bright.order !== 0) {
+            patternCtx.fillText(zonesText, xPos, screenY - 25);
+        }
+    }
+});
 
             // 标注暗纹文字（白色文字）
             patternCtx.fillStyle = '#ffffff';
