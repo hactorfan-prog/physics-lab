@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡诺热机循环虚拟仿真</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#FF7D00',
+            cold: '#4096ff',
+            hot: '#f5222d',
+            neutral: '#f5f5f5',
+            dark: '#1f2937'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style>
+    .card-shadow {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    .control-btn {
+      @apply px-4 py-2 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 border-2;
+    }
+    .control-btn-primary {
+      @apply bg-primary text-white hover:bg-primary/90 active:bg-primary/80 border-primary;
+    }
+    .control-btn-secondary {
+      @apply bg-white border-2 border-gray-300 hover:bg-gray-100 active:bg-blue-100 active:border-blue-300;
+    }
+    .slider-label {
+      @apply text-sm text-gray-600 mb-1 block;
+    }
+    .stat-card {
+      @apply bg-white rounded-lg p-3 text-center border border-gray-200;
+    }
+    .process-indicator {
+      @apply h-2 rounded-full transition-all duration-300;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary flex items-center gap-2">
+        <i class="fa fa-flask"></i>
+        卡诺热机循环虚拟仿真
+      </h1>
+      <div class="text-sm text-gray-500">
+        大学物理教学辅助工具
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 过程状态区域 -->
+      <div class="lg:col-span-1 bg-white rounded-xl p-4 card-shadow flex flex-col">
+        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+          <i class="fa fa-info-circle text-primary"></i>
+          循环过程状态
+        </h2>
+        
+        <!-- 当前状态 -->
+        <div class="mb-4">
+          <div class="text-sm text-gray-500 mb-1">当前状态</div>
+          <div class="text-lg font-semibold text-primary" id="currentProcess">准备就绪</div>
+        </div>
+        
+        <!-- 过程状态指示 -->
+        <div class="mt-2">
+          <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <span>等温膨胀</span>
+            <span>绝热膨胀</span>
+            <span>等温压缩</span>
+            <span>绝热压缩</span>
+          </div>
+          <div class="flex gap-1 h-2">
+            <div id="process1" class="process-indicator flex-1 bg-primary/30"></div>
+            <div id="process2" class="process-indicator flex-1 bg-primary/30"></div>
+            <div id="process3" class="process-indicator flex-1 bg-primary/30"></div>
+            <div id="process4" class="process-indicator flex-1 bg-primary/30"></div>
+          </div>
+        </div>
+        
+        <!-- 当前状态参数 -->
+        <div class="mt-6 space-y-3">
+          <h3 class="font-medium text-primary">当前状态参数</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">温度</div>
+              <div class="text-lg font-semibold" id="currentTemp">500 K</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">压强</div>
+              <div class="text-lg font-semibold" id="currentPressure">10.00 Pa</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">体积</div>
+              <div class="text-lg font-semibold" id="currentVolume">1.00 m³</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">内能</div>
+              <div class="text-lg font-semibold" id="currentInternalEnergy">0.00 J</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 膨胀倍数显示 -->
+        <div class="mt-4 space-y-2">
+          <div class="text-sm text-gray-600">膨胀倍数</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">等温膨胀</div>
+              <div class="text-lg font-semibold text-hot" id="isothermalRatioValue">2.0</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs text-gray-500">绝热膨胀</div>
+              <div class="text-lg font-semibold text-cold" id="adiabaticRatioValue">3.0</div>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500 bg-gray-100 p-2 rounded-lg">
+            <p class="font-medium mb-1">绝热膨胀倍数公式:</p>
+            <p class="text-center">V<sub>3</sub>/V<sub>2</sub> = (T<sub>热</sub>/T<sub>冷</sub>)<sup>1/(γ-1)</sup> = <span id="formulaRatioValue">3.0</span></p>
+            <p class="text-center mt-1">其中 γ = 1.4 (双原子气体)</p>
+          </div>
+        </div>
+        
+        <!-- 净功和效率显示 -->
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <div class="text-center">
+            <div class="inline-block bg-primary/10 border border-primary/20 rounded-lg px-4 py-2 w-full">
+              <div class="text-sm text-gray-600">净功</div>
+              <div class="text-xl font-bold text-primary" id="netWork">0.00 J</div>
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="inline-block bg-primary/10 border border-primary/20 rounded-lg px-4 py-2 w-full">
+              <div class="text-sm text-gray-600">热机效率</div>
+              <div class="text-xl font-bold text-primary" id="efficiency">0%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 控制按钮 -->
+        <div class="mt-4">
+          <div class="grid grid-cols-2 gap-3 w-full">
+            <button id="startBtn" class="control-btn control-btn-secondary">
+              <i class="fa fa-play"></i> 开始
+            </button>
+            <button id="pauseBtn" class="control-btn control-btn-secondary" disabled>
+              <i class="fa fa-pause"></i> 暂停
+            </button>
+            <button id="resetBtn" class="control-btn control-btn-secondary">
+              <i class="fa fa-refresh"></i> 重置
+            </button>
+            <button id="stepBtn" class="control-btn control-btn-secondary">
+              <i class="fa fa-step-forward"></i> 单步
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 可视化仿真区 -->
+      <div class="lg:col-span-2 bg-white rounded-xl p-4 card-shadow flex flex-col">
+        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+          <i class="fa fa-cogs text-primary"></i>
+          热机可视化仿真
+        </h2>
+        <div class="relative flex-grow min-h-[400px] bg-neutral rounded-lg overflow-hidden">
+          <!-- 热机可视化画布 -->
+          <canvas id="engineCanvas" class="w-full h-full"></canvas>
+          
+          <!-- PV图小画布 -->
+          <div class="absolute bottom-4 right-4 bg-white/90 border border-gray-300 rounded-lg p-2 shadow-lg">
+            <div class="text-xs font-medium text-center text-gray-700 mb-1">PV图</div>
+            <canvas id="pvCanvas" width="180" height="120"></canvas>
+          </div>
+          
+          <!-- 热源指示 -->
+          <div class="absolute top-4 left-4 bg-hot/20 border border-hot/30 text-hot px-3 py-1 rounded-lg text-sm flex items-center gap-2">
+            <i class="fa fa-fire"></i>
+            <span>高温热源: <span id="hotTemp">500</span>K</span>
+          </div>
+          <div class="absolute top-4 right-4 bg-cold/20 border border-cold/30 text-cold px-3 py-1 rounded-lg text-sm flex items-center gap-2">
+            <i class="fa fa-snowflake-o"></i>
+            <span>低温热源: <span id="coldTemp">300</span>K</span>
+          </div>
+        </div>
+        
+        <!-- 过程信息 -->
+        <div class="mt-4 bg-neutral rounded-lg p-3">
+          <h3 class="font-medium mb-2 text-primary">过程信息</h3>
+          <div id="processInfo" class="text-sm text-gray-700">
+            <div class="grid grid-cols-4 gap-4">
+              <div>
+                <p class="font-semibold text-hot mb-1">等温膨胀 (A→B)</p>
+                <p class="text-xs mb-2">气体与高温热源接触，等温膨胀，吸收热量，对外做功</p>
+                <p class="text-xs">状态: <span id="process1-status">未开始</span></p>
+                <div id="process1-data" class="mt-1 text-xs"></div>
+              </div>
+              <div>
+                <p class="font-semibold text-cold mb-1">绝热膨胀 (B→C)</p>
+                <p class="text-xs mb-2">气体与热源隔离，绝热膨胀，温度降低，对外做功</p>
+                <p class="text-xs">状态: <span id="process2-status">未开始</span></p>
+                <div id="process2-data" class="mt-1 text-xs"></div>
+              </div>
+              <div>
+                <p class="font-semibold text-hot mb-1">等温压缩 (C→D)</p>
+                <p class="text-xs mb-2">气体与低温热源接触，等温压缩，放出热量，外界对气体做功</p>
+                <p class="text-xs">状态: <span id="process3-status">未开始</span></p>
+                <div id="process3-data" class="mt-1 text-xs"></div>
+              </div>
+              <div>
+                <p class="font-semibold text-cold mb-1">绝热压缩 (D→A)</p>
+                <p class="text-xs mb-2">气体与热源隔离，绝热压缩，温度升高，外界对气体做功</p>
+                <p class="text-xs">状态: <span id="process4-status">未开始</span></p>
+                <div id="process4-data" class="mt-1 text-xs"></div>
+              </div>
+            </div>
+            <div class="mt-4 border-t pt-2">
+              <div id="process-details" class="text-xs text-gray-600 max-h-[120px] overflow-y-auto">
+                准备开始仿真...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 参数调节区 -->
+    <div class="mt-6 bg-white rounded-xl p-4 card-shadow">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        <i class="fa fa-sliders text-primary"></i>
+        参数调节与控制
+      </h2>
+      
+      <div class="grid grid-cols-1 gap-4">
+        <!-- 温度调节 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label for="hotSource" class="slider-label">高温热源温度 (300-1000K)</label>
+            <input type="range" id="hotSource" min="300" max="1000" value="500" 
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-hot">
+          </div>
+          <div>
+            <label for="coldSource" class="slider-label">低温热源温度 (100-500K)</label>
+            <input type="range" id="coldSource" min="100" max="500" value="300" 
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-cold">
+          </div>
+          <div>
+            <label for="isothermalExpansion" class="slider-label">等温膨胀倍数 (2-5)</label>
+            <input type="range" id="isothermalExpansion" min="2" max="5" step="0.1" value="2" 
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+          </div>
+          <div>
+            <label for="speedControl" class="slider-label">循环速度 (慢-快)</label>
+            <input type="range" id="speedControl" min="1" max="10" value="5" 
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+          </div>
+        </div>
+        
+        <div class="w-full p-3 bg-neutral rounded-lg text-sm text-gray-600 mt-2">
+          <p class="flex items-start gap-2">
+            <i class="fa fa-info-circle text-primary mt-0.5"></i>
+            <span>卡诺热机循环包括四个过程：等温膨胀、绝热膨胀、等温压缩和绝热压缩。通过调节参数可以观察不同条件下热机的工作状态。</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="mt-8 bg-dark text-white py-6">
+    <div class="container mx-auto px-4 text-center text-sm">
+      <p>卡诺热机循环虚拟仿真 &copy; 2023 大学物理教学辅助工具</p>
+      <p class="mt-1 text-gray-400">用于帮助学生理解热力学循环过程和热机效率原理</p>
+    </div>
+  </footer>
+
+  <script>
+    // 物理常量
+    const R = 8.31; // 气体常数
+    const gamma = 1.4; // 绝热指数，双原子气体
+    const CV = (5/2) * R; // 定容比热容
+    
+    // 卡诺循环状态
+    let simulationState = {
+      running: false,
+      paused: false,
+      currentProcess: 0, // 0: 准备, 1:等温膨胀, 2:绝热膨胀, 3:等温压缩, 4:绝热压缩
+      stepMode: false,
+      progress: 0, // 过程进度 0-1
+      speed: 5, // 1-10
+      
+      // 状态参数
+      hotTemp: 500,
+      coldTemp: 300,
+      isothermalExpansionRatio: 2, // 等温膨胀倍数
+      n: 1, // 物质的量 (mol)
+      
+      // 当前状态参数
+      currentTemp: 500,
+      currentPressure: 10,
+      currentVolume: 1,
+      currentInternalEnergy: 0,
+      
+      // 状态点
+      points: {
+        A: { p: 10, v: 1, t: 500 },
+        B: { p: null, v: null, t: null },
+        C: { p: null, v: null, t: null },
+        D: { p: null, v: null, t: null },
+      },
+      
+      // 循环累计量
+      totalWork: 0,
+      totalHeatAbsorbed: 0,
+      totalHeatReleased: 0,
+      
+      // 当前过程物理量
+      currentWork: 0,
+      currentHeat: 0,
+      currentDeltaU: 0,
+      
+      // 过程数据记录
+      processData: {
+        1: [], // 等温膨胀数据
+        2: [], // 绝热膨胀数据
+        3: [], // 等温压缩数据
+        4: []  // 绝热压缩数据
+      },
+      
+      // 分子动画参数
+      molecules: [],
+      numMolecules: 50,
+      
+      // PV图数据 - 调整后的曲线：等温线更平缓，绝热线更陡峭
+      presetPVData: {
+        // 1. 等温膨胀（A→B）：更平缓的下降曲线
+        1: [
+          {v: 1.0, p: 10.0}, {v: 1.5, p: 6.7}, {v: 2.0, p: 5.0}, {v: 2.5, p: 4.0}, {v: 3.0, p: 3.3},
+          {v: 3.5, p: 2.9}, {v: 4.0, p: 2.5}, {v: 4.5, p: 2.2}, {v: 5.0, p: 2.0}, {v: 5.5, p: 1.8}
+        ],
+        // 2. 绝热膨胀（B→C）：更陡峭的下降曲线
+        2: [
+          {v: 5.5, p: 1.8}, {v: 5.8, p: 1.3}, {v: 6.1, p: 0.9}, {v: 6.4, p: 0.7}, {v: 6.7, p: 0.5},
+          {v: 7.0, p: 0.4}, {v: 7.3, p: 0.3}, {v: 7.6, p: 0.25}, {v: 7.9, p: 0.2}, {v: 8.2, p: 0.15}
+        ],
+        // 3. 等温压缩（C→D）：更平缓的上升曲线
+        3: [
+          {v: 8.2, p: 0.15}, {v: 7.6, p: 0.16}, {v: 7.0, p: 0.18}, {v: 6.4, p: 0.2}, {v: 5.8, p: 0.22},
+          {v: 5.2, p: 0.25}, {v: 4.6, p: 0.28}, {v: 4.0, p: 0.32}, {v: 3.4, p: 0.37}, {v: 2.8, p: 0.44}
+        ],
+        // 4. 绝热压缩（D→A）：更陡峭的上升曲线（闭合循环）
+        4: [
+          {v: 2.8, p: 0.44}, {v: 2.3, p: 1.1}, {v: 1.8, p: 2.6}, {v: 1.5, p: 4.2}, {v: 1.3, p: 5.8},
+          {v: 1.2, p: 7.0}, {v: 1.1, p: 8.2}, {v: 1.05, p: 9.1}, {v: 1.02, p: 9.6}, {v: 1.0, p: 10.0}
+        ]
+      },
+      
+      // PV图绘制状态
+      pvData: [],
+      pvProcess: 0,
+      pvDrawing: false,
+      pvPointsPerProcess: 10 // 每个过程绘制的点数
+    };
+    
+    // DOM元素
+    const elements = {
+      engineCanvas: document.getElementById('engineCanvas'),
+      pvCanvas: document.getElementById('pvCanvas'),
+      hotSourceSlider: document.getElementById('hotSource'),
+      coldSourceSlider: document.getElementById('coldSource'),
+      isothermalExpansionSlider: document.getElementById('isothermalExpansion'),
+      speedControl: document.getElementById('speedControl'),
+      startBtn: document.getElementById('startBtn'),
+      pauseBtn: document.getElementById('pauseBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      stepBtn: document.getElementById('stepBtn'),
+      currentProcessEl: document.getElementById('currentProcess'),
+      process1: document.getElementById('process1'),
+      process2: document.getElementById('process2'),
+      process3: document.getElementById('process3'),
+      process4: document.getElementById('process4'),
+      hotTempEl: document.getElementById('hotTemp'),
+      coldTempEl: document.getElementById('coldTemp'),
+      efficiencyEl: document.getElementById('efficiency'),
+      netWorkEl: document.getElementById('netWork'),
+      processDetailsEl: document.getElementById('process-details'),
+      currentTempEl: document.getElementById('currentTemp'),
+      currentPressureEl: document.getElementById('currentPressure'),
+      currentVolumeEl: document.getElementById('currentVolume'),
+      currentInternalEnergyEl: document.getElementById('currentInternalEnergy'),
+      isothermalRatioValue: document.getElementById('isothermalRatioValue'),
+      adiabaticRatioValue: document.getElementById('adiabaticRatioValue'),
+      formulaRatioValue: document.getElementById('formulaRatioValue'),
+      process1Status: document.getElementById('process1-status'),
+      process2Status: document.getElementById('process2-status'),
+      process3Status: document.getElementById('process3-status'),
+      process4Status: document.getElementById('process4-status'),
+      process1Data: document.getElementById('process1-data'),
+      process2Data: document.getElementById('process2-data'),
+      process3Data: document.getElementById('process3-data'),
+      process4Data: document.getElementById('process4-data')
+    };
+    
+    // Canvas上下文
+    let engineCtx;
+    let pvCtx;
+    
+    // 初始化
+    function init() {
+      // 初始化Canvas上下文
+      engineCtx = elements.engineCanvas.getContext('2d');
+      pvCtx = elements.pvCanvas.getContext('2d');
+      
+      // 设置Canvas尺寸
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      // 初始化状态点
+      updateStatePoints();
+      
+      // 更新膨胀倍数显示
+      updateExpansionRatios();
+      
+      // 初始化分子
+      initMolecules();
+      
+      // 初始化PV图
+      initPVGraph();
+      
+      // 绘制初始状态
+      drawEngine();
+      
+      // 添加事件监听
+      setupEventListeners();
+    }
+    
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 为控制按钮添加点击效果
+      const controlButtons = [elements.startBtn, elements.pauseBtn, elements.resetBtn, elements.stepBtn];
+      
+      controlButtons.forEach(btn => {
+        btn.addEventListener('mousedown', () => {
+          if (btn.classList.contains('control-btn-secondary')) {
+            btn.classList.add('bg-blue-100', 'border-blue-300');
+          }
+        });
+        
+        btn.addEventListener('mouseup', () => {
+          if (btn.classList.contains('control-btn-secondary')) {
+            setTimeout(() => {
+              btn.classList.remove('bg-blue-100', 'border-blue-300');
+            }, 150);
+          }
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+          if (btn.classList.contains('control-btn-secondary')) {
+            btn.classList.remove('bg-blue-100', 'border-blue-300');
+          }
+        });
+      });
+      
+      elements.startBtn.addEventListener('click', startSimulation);
+      elements.pauseBtn.addEventListener('click', pauseSimulation);
+      elements.resetBtn.addEventListener('click', resetSimulation);
+      elements.stepBtn.addEventListener('click', stepSimulation);
+      
+      elements.hotSourceSlider.addEventListener('input', (e) => {
+        if (!simulationState.running) {
+          simulationState.hotTemp = parseInt(e.target.value);
+          // 确保高温热源始终大于低温热源
+          if (simulationState.hotTemp <= simulationState.coldTemp) {
+            simulationState.hotTemp = simulationState.coldTemp + 1;
+            e.target.value = simulationState.hotTemp;
+          }
+          elements.hotTempEl.textContent = simulationState.hotTemp;
+          updateStatePoints();
+          updateExpansionRatios();
+        }
+      });
+      
+      elements.coldSourceSlider.addEventListener('input', (e) => {
+        if (!simulationState.running) {
+          simulationState.coldTemp = parseInt(e.target.value);
+          // 确保低温热源始终小于高温热源
+          if (simulationState.coldTemp >= simulationState.hotTemp) {
+            simulationState.coldTemp = simulationState.hotTemp - 1;
+            e.target.value = simulationState.coldTemp;
+          }
+          elements.coldTempEl.textContent = simulationState.coldTemp;
+          updateStatePoints();
+          updateExpansionRatios();
+        }
+      });
+      
+      elements.isothermalExpansionSlider.addEventListener('input', (e) => {
+        if (!simulationState.running) {
+          simulationState.isothermalExpansionRatio = parseFloat(e.target.value);
+          updateStatePoints();
+          updateExpansionRatios();
+        }
+      });
+      
+      elements.speedControl.addEventListener('input', (e) => {
+        simulationState.speed = parseInt(e.target.value);
+      });
+    }
+    
+    // 计算绝热膨胀倍数
+    function calculateAdiabaticRatio() {
+      return Math.pow(simulationState.hotTemp / simulationState.coldTemp, 1/(gamma-1));
+    }
+    
+    // 更新膨胀倍数显示
+    function updateExpansionRatios() {
+      elements.isothermalRatioValue.textContent = simulationState.isothermalExpansionRatio.toFixed(1);
+      
+      const adiabaticRatio = calculateAdiabaticRatio();
+      elements.adiabaticRatioValue.textContent = adiabaticRatio.toFixed(1);
+      elements.formulaRatioValue.textContent = adiabaticRatio.toFixed(1);
+    }
+    
+    // 调整Canvas尺寸
+    function resizeCanvas() {
+      // 热机Canvas
+      elements.engineCanvas.width = elements.engineCanvas.offsetWidth;
+      elements.engineCanvas.height = elements.engineCanvas.offsetHeight;
+      
+      // 重绘
+      drawEngine();
+    }
+    
+    // 初始化分子
+    function initMolecules() {
+      simulationState.molecules = [];
+      const engineWidth = elements.engineCanvas.width;
+      const engineHeight = elements.engineCanvas.height;
+      
+      // 计算气缸内部区域
+      const cylinderLeft = engineWidth * 0.2;
+      const cylinderRight = engineWidth * 0.8;
+      const cylinderTop = engineHeight * 0.1;
+      const cylinderBottom = engineHeight * 0.85;
+      
+      for (let i = 0; i < simulationState.numMolecules; i++) {
+        simulationState.molecules.push({
+          x: cylinderLeft + Math.random() * (cylinderRight - cylinderLeft),
+          y: cylinderTop + Math.random() * (cylinderBottom - cylinderTop),
+          radius: 3 + Math.random() * 2,
+          vx: (Math.random() - 0.5) * 2 * 2,
+          vy: (Math.random() - 0.5) * 2 * 2,
+          color: `rgba(22, 93, 255, ${0.7 + Math.random() * 0.3})`
+        });
+      }
+    }
+    
+    // 初始化PV图
+    function initPVGraph() {
+      const canvas = elements.pvCanvas;
+      const ctx = pvCtx;
+      
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制坐标轴
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(15, 10);
+      ctx.lineTo(15, canvas.height - 15);
+      ctx.lineTo(canvas.width - 10, canvas.height - 15);
+      ctx.stroke();
+      
+      // 绘制坐标轴标签
+      ctx.fillStyle = '#666';
+      ctx.font = '10px Arial';
+      ctx.fillText('P', 5, 15);
+      ctx.fillText('V', canvas.width - 15, canvas.height - 5);
+      
+      // 重置PV数据
+      simulationState.pvData = [];
+      simulationState.pvProcess = 0;
+      simulationState.pvDrawing = false;
+    }
+    
+    // 绘制PV图
+    function drawPVGraph() {
+      const canvas = elements.pvCanvas;
+      const ctx = pvCtx;
+      
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制坐标轴
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(15, 10);
+      ctx.lineTo(15, canvas.height - 15);
+      ctx.lineTo(canvas.width - 10, canvas.height - 15);
+      ctx.stroke();
+      
+      // 绘制坐标轴标签
+      ctx.fillStyle = '#666';
+      ctx.font = '10px Arial';
+      ctx.fillText('P', 5, 15);
+      ctx.fillText('V', canvas.width - 15, canvas.height - 5);
+      
+      // 如果没有数据，直接返回
+      if (simulationState.pvData.length === 0) return;
+      
+      // 计算坐标范围（使用预设数据的范围）
+      let allPoints = [];
+      for (let i = 1; i <= 4; i++) {
+        allPoints = allPoints.concat(simulationState.presetPVData[i]);
+      }
+      
+      const minV = Math.min(...allPoints.map(p => p.v));
+      const maxV = Math.max(...allPoints.map(p => p.v));
+      const minP = Math.min(...allPoints.map(p => p.p));
+      const maxP = Math.max(...allPoints.map(p => p.p));
+      
+      // 添加一些边距
+      const vRange = maxV - minV;
+      const pRange = maxP - minP;
+      const marginV = vRange * 0.1;
+      const marginP = pRange * 0.1;
+      
+      // 坐标变换函数
+      const x = v => 15 + (v - minV + marginV) / (maxV - minV + 2 * marginV) * (canvas.width - 25);
+      const y = p => canvas.height - 15 - (p - minP + marginP) / (maxP - minP + 2 * marginP) * (canvas.height - 25);
+      
+      // 绘制完整的理论曲线（灰色虚线）
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      
+      // 绘制所有四个过程的理论曲线
+      for (let process = 1; process <= 4; process++) {
+        const points = simulationState.presetPVData[process];
+        for (let i = 0; i < points.length; i++) {
+          if (process === 1 && i === 0) {
+            ctx.moveTo(x(points[i].v), y(points[i].p));
+          } else {
+            ctx.lineTo(x(points[i].v), y(points[i].p));
+          }
+        }
+      }
+      
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // 绘制已完成的曲线（蓝色实线）
+      if (simulationState.pvData.length > 1) {
+        ctx.strokeStyle = '#165DFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        for (let i = 0; i < simulationState.pvData.length; i++) {
+          const point = simulationState.pvData[i];
+          if (i === 0) {
+            ctx.moveTo(x(point.v), y(point.p));
+          } else {
+            ctx.lineTo(x(point.v), y(point.p));
+          }
+        }
+        
+        ctx.stroke();
+      }
+      
+      // 绘制当前点
+      if (simulationState.pvData.length > 0) {
+        const currentPoint = simulationState.pvData[simulationState.pvData.length - 1];
+        ctx.fillStyle = '#FF7D00';
+        ctx.beginPath();
+        ctx.arc(x(currentPoint.v), y(currentPoint.p), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 绘制状态点标签
+      ctx.fillStyle = '#333';
+      ctx.font = '8px Arial';
+      
+      // A点
+      ctx.fillText('A', x(1.0) + 5, y(10.0) - 5);
+      
+      // B点
+      if (simulationState.pvProcess >= 1) {
+        ctx.fillText('B', x(5.5) + 5, y(1.8) - 5);
+      }
+      
+      // C点
+      if (simulationState.pvProcess >= 2) {
+        ctx.fillText('C', x(8.2) + 5, y(0.15) - 5);
+      }
+      
+      // D点
+      if (simulationState.pvProcess >= 3) {
+        ctx.fillText('D', x(2.8) + 5, y(0.44) - 5);
+      }
+    }
+    
+    // 更新PV图
+    function updatePVGraph() {
+      if (!simulationState.pvDrawing) return;
+      
+      const currentProcess = simulationState.currentProcess;
+      const progress = simulationState.progress;
+      
+      // 只有当仿真过程与PV过程匹配时才绘制
+      if (currentProcess === simulationState.pvProcess) {
+        // 获取当前过程的预设点
+        const processPoints = simulationState.presetPVData[currentProcess];
+        
+        // 计算应该绘制的点数
+        const targetPoints = Math.floor(progress * simulationState.pvPointsPerProcess);
+        
+        // 当前过程已绘制的点数
+        const startIndex = (currentProcess - 1) * simulationState.pvPointsPerProcess;
+        const currentPoints = simulationState.pvData.length - startIndex;
+        
+        // 如果需要添加新点
+        if (targetPoints > currentPoints && targetPoints < processPoints.length) {
+          simulationState.pvData.push(processPoints[targetPoints]);
+        }
+      }
+      
+      // 如果当前过程完成，进入下一个过程
+      if (progress >= 1 && currentProcess === simulationState.pvProcess) {
+        // 添加当前过程的最后一个点
+        const processPoints = simulationState.presetPVData[currentProcess];
+        simulationState.pvData.push(processPoints[processPoints.length - 1]);
+        
+        simulationState.pvProcess++;
+        
+        // 如果所有过程完成，停止绘制
+        if (simulationState.pvProcess > 4) {
+          simulationState.pvDrawing = false;
+        }
+      }
+      
+      drawPVGraph();
+    }
+    
+    // 开始PV图绘制
+    function startPVDrawing() {
+      simulationState.pvData = [];
+      simulationState.pvProcess = 1;
+      simulationState.pvDrawing = true;
+      
+      // 添加起始点A
+      simulationState.pvData.push(simulationState.presetPVData[1][0]);
+    }
+    
+    // 更新状态点参数
+    function updateStatePoints() {
+      // 点A：初始状态
+      simulationState.points.A.t = simulationState.hotTemp;
+      simulationState.points.A.v = 1.0; // 固定初始体积为1m³
+      simulationState.points.A.p = 10.0; // 固定初始压强
+      
+      // 计算绝热膨胀倍数
+      const adiabaticRatio = calculateAdiabaticRatio();
+      
+      // 点B：等温膨胀终点
+      simulationState.points.B.v = simulationState.points.A.v * simulationState.isothermalExpansionRatio;
+      simulationState.points.B.p = simulationState.points.A.p * (simulationState.points.A.v / simulationState.points.B.v); // 等温过程 P ∝ 1/V
+      simulationState.points.B.t = simulationState.hotTemp;
+      
+      // 点C：绝热膨胀终点
+      simulationState.points.C.v = simulationState.points.B.v * adiabaticRatio;
+      simulationState.points.C.p = simulationState.points.B.p * Math.pow(simulationState.points.B.v / simulationState.points.C.v, gamma); // 绝热过程 P ∝ 1/V^γ
+      simulationState.points.C.t = simulationState.coldTemp;
+      
+      // 点D：等温压缩终点
+      simulationState.points.D.v = simulationState.points.A.v * adiabaticRatio; // 确保循环闭合
+      simulationState.points.D.p = simulationState.points.C.p * (simulationState.points.C.v / simulationState.points.D.v); // 等温过程 P ∝ 1/V
+      simulationState.points.D.t = simulationState.coldTemp;
+      
+      // 初始化当前状态参数
+      simulationState.currentTemp = simulationState.points.A.t;
+      simulationState.currentPressure = simulationState.points.A.p;
+      simulationState.currentVolume = simulationState.points.A.v;
+      simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+    }
+    
+    // 开始仿真
+    function startSimulation() {
+      if (simulationState.paused) {
+        simulationState.paused = false;
+      } else {
+        resetSimulation(false);
+        simulationState.running = true;
+        simulationState.currentProcess = 1;
+        updateProcessIndicator();
+        
+        // 开始PV图绘制
+        startPVDrawing();
+      }
+      
+      elements.startBtn.disabled = true;
+      elements.pauseBtn.disabled = false;
+      elements.stepBtn.disabled = true;
+      
+      requestAnimationFrame(updateSimulation);
+    }
+    
+    // 暂停仿真
+    function pauseSimulation() {
+      simulationState.paused = true;
+      elements.startBtn.disabled = false;
+      elements.pauseBtn.disabled = true;
+      elements.stepBtn.disabled = false;
+    }
+    
+    // 重置仿真
+    function resetSimulation(clearInfo = true) {
+      simulationState.running = false;
+      simulationState.paused = false;
+      simulationState.currentProcess = 0;
+      simulationState.progress = 0;
+      simulationState.stepMode = false;
+      
+      simulationState.totalWork = 0;
+      simulationState.totalHeatAbsorbed = 0;
+      simulationState.totalHeatReleased = 0;
+      
+      simulationState.currentWork = 0;
+      simulationState.currentHeat = 0;
+      simulationState.currentDeltaU = 0;
+      
+      // 重置过程数据
+      simulationState.processData = {
+        1: [], 2: [], 3: [], 4: []
+      };
+      
+      // 重置当前状态参数
+      simulationState.currentTemp = simulationState.points.A.t;
+      simulationState.currentPressure = simulationState.points.A.p;
+      simulationState.currentVolume = simulationState.points.A.v;
+      simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+      
+      // 重置PV图
+      initPVGraph();
+      
+      updateStatePoints();
+      updateProcessIndicator();
+      updateCurrentStateDisplay();
+      updateProcessStatus();
+      updateProcessDataDisplay();
+      
+      // 重置显示
+      elements.efficiencyEl.textContent = "0%";
+      elements.netWorkEl.textContent = "0.00 J";
+      
+      if (clearInfo) {
+        elements.processDetailsEl.innerHTML = "准备开始仿真...";
+      }
+      
+      elements.startBtn.disabled = false;
+      elements.pauseBtn.disabled = true;
+      elements.stepBtn.disabled = false;
+      
+      // 重绘
+      drawEngine();
+    }
+    
+    // 单步运行
+    function stepSimulation() {
+      if (simulationState.running && !simulationState.paused) return;
+      
+      if (simulationState.currentProcess === 0) {
+        resetSimulation(false);
+        simulationState.running = true;
+        simulationState.currentProcess = 1;
+        simulationState.stepMode = true;
+        updateProcessIndicator();
+        
+        // 开始PV图绘制
+        startPVDrawing();
+      } else if (simulationState.currentProcess <= 4) {
+        simulationState.stepMode = true;
+        simulationState.paused = false;
+      }
+      
+      elements.startBtn.disabled = true;
+      elements.pauseBtn.disabled = true;
+      elements.stepBtn.disabled = true;
+      
+      requestAnimationFrame(updateSimulation);
+    }
+    
+    // 更新过程指示器
+    function updateProcessIndicator() {
+      // 重置所有指示器
+      elements.process1.className = "process-indicator flex-1 bg-primary/30";
+      elements.process2.className = "process-indicator flex-1 bg-primary/30";
+      elements.process3.className = "process-indicator flex-1 bg-primary/30";
+      elements.process4.className = "process-indicator flex-1 bg-primary/30";
+      
+      // 更新当前过程文本
+      const processNames = [
+        "准备就绪",
+        "1. 等温膨胀",
+        "2. 绝热膨胀",
+        "3. 等温压缩",
+        "4. 绝热压缩",
+        "循环完成"
+      ];
+      elements.currentProcessEl.textContent = processNames[simulationState.currentProcess];
+      
+      // 高亮已完成的过程
+      for (let i = 1; i < simulationState.currentProcess; i++) {
+        const el = [null, elements.process1, elements.process2, elements.process3, elements.process4][i];
+        if (el) el.className = "process-indicator flex-1 bg-green-500";
+      }
+      
+      // 高亮当前过程
+      if (simulationState.currentProcess >= 1 && simulationState.currentProcess <= 4) {
+        const el = [null, elements.process1, elements.process2, elements.process3, elements.process4][simulationState.currentProcess];
+        if (el) el.className = "process-indicator flex-1 bg-primary";
+      }
+      
+      // 循环完成时，所有过程都标记为已完成
+      if (simulationState.currentProcess === 5) {
+        elements.process1.className = "process-indicator flex-1 bg-green-500";
+        elements.process2.className = "process-indicator flex-1 bg-green-500";
+        elements.process3.className = "process-indicator flex-1 bg-green-500";
+        elements.process4.className = "process-indicator flex-1 bg-green-500";
+      }
+    }
+    
+    // 更新过程状态
+    function updateProcessStatus() {
+      elements.process1Status.textContent = simulationState.currentProcess > 1 ? "已完成" : 
+                                           simulationState.currentProcess === 1 ? "进行中" : "未开始";
+      elements.process2Status.textContent = simulationState.currentProcess > 2 ? "已完成" : 
+                                           simulationState.currentProcess === 2 ? "进行中" : "未开始";
+      elements.process3Status.textContent = simulationState.currentProcess > 3 ? "已完成" : 
+                                           simulationState.currentProcess === 3 ? "进行中" : "未开始";
+      elements.process4Status.textContent = simulationState.currentProcess > 4 ? "已完成" : 
+                                           simulationState.currentProcess === 4 ? "进行中" : "未开始";
+      
+      // 循环完成时，所有过程都标记为已完成
+      if (simulationState.currentProcess === 5) {
+        elements.process1Status.textContent = "已完成";
+        elements.process2Status.textContent = "已完成";
+        elements.process3Status.textContent = "已完成";
+        elements.process4Status.textContent = "已完成";
+      }
+    }
+    
+    // 更新过程数据显示
+    function updateProcessDataDisplay() {
+      // 等温膨胀数据
+      elements.process1Data.innerHTML = simulationState.processData[1].map(data => 
+        `<div class="border-t pt-1 mt-1">做功: ${data.work.toFixed(2)} J<br>热量: ${data.heat.toFixed(2)} J</div>`
+      ).join('');
+      
+      // 绝热膨胀数据
+      elements.process2Data.innerHTML = simulationState.processData[2].map(data => 
+        `<div class="border-t pt-1 mt-1">做功: ${data.work.toFixed(2)} J<br>ΔT: ${data.deltaT.toFixed(0)} K</div>`
+      ).join('');
+      
+      // 等温压缩数据
+      elements.process3Data.innerHTML = simulationState.processData[3].map(data => 
+        `<div class="border-t pt-1 mt-1">做功: ${data.work.toFixed(2)} J<br>热量: ${data.heat.toFixed(2)} J</div>`
+      ).join('');
+      
+      // 绝热压缩数据
+      elements.process4Data.innerHTML = simulationState.processData[4].map(data => 
+        `<div class="border-t pt-1 mt-1">做功: ${data.work.toFixed(2)} J<br>ΔT: ${data.deltaT.toFixed(0)} K</div>`
+      ).join('');
+    }
+    
+    // 更新当前状态显示
+    function updateCurrentStateDisplay() {
+      elements.currentTempEl.textContent = simulationState.currentTemp.toFixed(0) + " K";
+      elements.currentPressureEl.textContent = simulationState.currentPressure.toFixed(2) + " Pa";
+      elements.currentVolumeEl.textContent = simulationState.currentVolume.toFixed(2) + " m³";
+      elements.currentInternalEnergyEl.textContent = simulationState.currentInternalEnergy.toFixed(2) + " J";
+    }
+    
+    // 更新仿真
+    function updateSimulation() {
+      if (!simulationState.running || simulationState.paused) return;
+      
+      // 计算进度增量
+      const progressIncrement = 0.005 * simulationState.speed;
+      simulationState.progress += progressIncrement;
+      
+      // 更新当前过程的物理量
+      updateProcessPhysics();
+      
+      // 更新分子运动
+      updateMolecules();
+      
+      // 更新当前状态显示
+      updateCurrentStateDisplay();
+      
+      // 更新过程状态
+      updateProcessStatus();
+      
+      // 更新净功显示
+      elements.netWorkEl.textContent = simulationState.totalWork.toFixed(2) + " J";
+      
+      // 更新PV图
+      updatePVGraph();
+      
+      // 绘制
+      drawEngine();
+      
+      // 检查过程是否完成
+      if (simulationState.progress >= 1) {
+        finishCurrentProcess();
+        
+        // 如果是单步模式，完成后暂停
+        if (simulationState.stepMode) {
+          simulationState.paused = true;
+          elements.startBtn.disabled = false;
+          elements.stepBtn.disabled = false;
+          return;
+        }
+      }
+      
+      requestAnimationFrame(updateSimulation);
+    }
+    
+    // 更新当前过程的物理量
+    function updateProcessPhysics() {
+      const p = simulationState.currentProcess;
+      const progress = simulationState.progress;
+      
+      switch(p) {
+        case 1: // 等温膨胀 (A→B)
+          const vA = simulationState.points.A.v;
+          const vB = simulationState.points.B.v;
+          const TA = simulationState.points.A.t;
+          
+          // 体积从A到B递增
+          simulationState.currentVolume = vA + (vB - vA) * progress;
+          // 等温过程：P = nRT/V
+          simulationState.currentPressure = (simulationState.n * R * TA) / simulationState.currentVolume;
+          simulationState.currentTemp = TA; // 等温过程温度不变
+          
+          // 等温膨胀功：W = nRT ln(V2/V1) (正功，气体对外做功)
+          simulationState.currentWork = simulationState.n * R * TA * Math.log(simulationState.currentVolume / vA);
+          simulationState.currentHeat = simulationState.currentWork; // 吸收热量（正值）
+          simulationState.currentDeltaU = 0; // 等温过程内能不变
+          simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+          break;
+          
+        case 2: // 绝热膨胀 (B→C)
+          const vB2 = simulationState.points.B.v;
+          const vC = simulationState.points.C.v;
+          const TB = simulationState.points.B.t;
+          
+          // 体积从B到C递增
+          simulationState.currentVolume = vB2 + (vC - vB2) * progress;
+          // 绝热过程温度变化：T = TB*(VB/VC)^(γ-1)
+          simulationState.currentTemp = TB * Math.pow(vB2 / simulationState.currentVolume, gamma - 1);
+          // 绝热过程压强变化：P = PB*(VB/VC)^γ
+          simulationState.currentPressure = simulationState.points.B.p * Math.pow(vB2 / simulationState.currentVolume, gamma);
+          
+          // 绝热过程功：W = -ΔU = nCV(TB - TC) (正功，气体对外做功)
+          const TC_current = simulationState.currentTemp;
+          simulationState.currentDeltaU = simulationState.n * CV * (TC_current - TB);
+          simulationState.currentWork = -simulationState.currentDeltaU;
+          simulationState.currentHeat = 0; // 绝热过程无热量交换
+          simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+          break;
+          
+        case 3: // 等温压缩 (C→D)
+          const vC2 = simulationState.points.C.v;
+          const vD = simulationState.points.D.v;
+          const TC2 = simulationState.points.C.t;
+          
+          // 体积从C到D递减（压缩过程）
+          simulationState.currentVolume = vC2 + (vD - vC2) * progress;
+          // 等温过程：P = nRT/V
+          simulationState.currentPressure = (simulationState.n * R * TC2) / simulationState.currentVolume;
+          simulationState.currentTemp = TC2; // 等温过程温度不变
+          
+          // 等温压缩功：W = nRT ln(V2/V1) (V2<V1，ln为负，功为负，外界对气体做功)
+          simulationState.currentWork = simulationState.n * R * TC2 * Math.log(simulationState.currentVolume / vC2);
+          simulationState.currentHeat = simulationState.currentWork; // 放出热量（负值）
+          simulationState.currentDeltaU = 0; // 等温过程内能不变
+          simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+          break;
+          
+        case 4: // 绝热压缩 (D→A)
+          const vD2 = simulationState.points.D.v;
+          const vA_target = simulationState.points.A.v;
+          const TD = simulationState.points.D.t;
+          
+          // 体积从D到A递增（压缩过程）
+          simulationState.currentVolume = vD2 + (vA_target - vD2) * progress;
+          // 绝热过程温度变化：T = TD*(VD/VA)^(γ-1)
+          simulationState.currentTemp = TD * Math.pow(vD2 / simulationState.currentVolume, gamma - 1);
+          // 绝热过程压强变化：P = PD*(VD/VA)^γ
+          simulationState.currentPressure = simulationState.points.D.p * Math.pow(vD2 / simulationState.currentVolume, gamma);
+          
+          // 绝热压缩功：W = -ΔU = nCV(TD - TA) (负功，外界对气体做功)
+          const TA_current = simulationState.currentTemp;
+          simulationState.currentDeltaU = simulationState.n * CV * (TA_current - TD);
+          simulationState.currentWork = -simulationState.currentDeltaU;
+          simulationState.currentHeat = 0; // 绝热过程无热量交换
+          simulationState.currentInternalEnergy = simulationState.n * CV * simulationState.currentTemp;
+          break;
+      }
+    }
+    
+    // 更新分子运动
+    function updateMolecules() {
+      const engineWidth = elements.engineCanvas.width;
+      const engineHeight = elements.engineCanvas.height;
+      
+      // 气缸边界
+      const cylinderLeft = engineWidth * 0.2;
+      const cylinderRight = engineWidth * 0.8;
+      const cylinderTop = engineHeight * 0.1;
+      const cylinderBottom = engineHeight * 0.85;
+      
+      // 活塞位置根据当前体积变化
+      let pistonY;
+      const maxPistonY = cylinderBottom - 30;
+      const minPistonY = cylinderTop + 40;
+      
+      // 使用所有状态点的最小和最大体积来计算活塞位置
+      const minVolume = Math.min(
+        simulationState.points.A.v, 
+        simulationState.points.B.v, 
+        simulationState.points.C.v, 
+        simulationState.points.D.v
+      );
+      const maxVolume = Math.max(
+        simulationState.points.A.v, 
+        simulationState.points.B.v, 
+        simulationState.points.C.v, 
+        simulationState.points.D.v
+      );
+      
+      const volumeRatio = (simulationState.currentVolume - minVolume) / (maxVolume - minVolume);
+      pistonY = minPistonY + volumeRatio * (maxPistonY - minPistonY);
+      
+      // 确保活塞在容器范围内
+      pistonY = Math.max(minPistonY, Math.min(maxPistonY, pistonY));
+      
+      // 分子速度根据温度变化
+      let tempFactor = simulationState.currentTemp / 500;
+      
+      // 更新每个分子的位置和速度
+      simulationState.molecules.forEach(mol => {
+        const speedFactor = tempFactor * (simulationState.speed / 5);
+        
+        mol.x += mol.vx * speedFactor;
+        mol.y += mol.vy * speedFactor;
+        
+        // 碰撞检测
+        if (mol.x - mol.radius < cylinderLeft) {
+          mol.x = cylinderLeft + mol.radius;
+          mol.vx = -mol.vx;
+        } else if (mol.x + mol.radius > cylinderRight) {
+          mol.x = cylinderRight - mol.radius;
+          mol.vx = -mol.vx;
+        }
+        
+        if (mol.y - mol.radius < cylinderTop) {
+          mol.y = cylinderTop + mol.radius;
+          mol.vy = -mol.vy;
+        } else if (mol.y + mol.radius > pistonY) {
+          mol.y = pistonY - mol.radius;
+          mol.vy = -mol.vy;
+        }
+      });
+    }
+    
+    // 完成当前过程
+    function finishCurrentProcess() {
+      // 累计总功和热量
+      simulationState.totalWork += simulationState.currentWork;
+      
+      if (simulationState.currentProcess === 1) {
+        simulationState.totalHeatAbsorbed += simulationState.currentHeat;
+      } else if (simulationState.currentProcess === 3) {
+        simulationState.totalHeatReleased += -simulationState.currentHeat;
+      }
+      
+      // 记录过程数据
+      const processData = {
+        work: simulationState.currentWork,
+        heat: simulationState.currentHeat,
+        deltaU: simulationState.currentDeltaU
+      };
+      
+      // 对于绝热过程，记录温度变化
+      if (simulationState.currentProcess === 2 || simulationState.currentProcess === 4) {
+        const startTemp = simulationState.currentProcess === 2 ? 
+          simulationState.points.B.t : simulationState.points.D.t;
+        const endTemp = simulationState.currentProcess === 2 ? 
+          simulationState.points.C.t : simulationState.points.A.t;
+        processData.deltaT = endTemp - startTemp;
+      }
+      
+      simulationState.processData[simulationState.currentProcess].push(processData);
+      
+      // 更新过程数据显示
+      updateProcessDataDisplay();
+      
+      // 记录过程信息
+      const processNames = ["", "等温膨胀", "绝热膨胀", "等温压缩", "绝热压缩"];
+      const heatText = simulationState.currentHeat > 0 ? 
+        '吸收 ' + simulationState.currentHeat.toFixed(2) : 
+        simulationState.currentHeat < 0 ? 
+        '放出 ' + (-simulationState.currentHeat).toFixed(2) : '0.00';
+      
+      const infoText = `
+        <p class="font-medium mt-2">${processNames[simulationState.currentProcess]} 完成：</p>
+        <p>• 做功：${simulationState.currentWork.toFixed(2)} J</p>
+        <p>• 热量：${heatText} J</p>
+        <p>• 内能变化：${simulationState.currentDeltaU.toFixed(2)} J</p>
+      `;
+      elements.processDetailsEl.innerHTML += infoText;
+      elements.processDetailsEl.scrollTop = elements.processDetailsEl.scrollHeight;
+      
+      // 检查是否完成所有过程
+      if (simulationState.currentProcess === 4) {
+        // 计算效率
+        let efficiency = 0;
+        if (simulationState.totalHeatAbsorbed > 0) {
+          efficiency = (simulationState.totalWork / simulationState.totalHeatAbsorbed) * 100;
+        }
+        
+        // 效率不能超过卡诺效率上限
+        const carnotEfficiency = (1 - simulationState.coldTemp / simulationState.hotTemp) * 100;
+        efficiency = Math.min(efficiency, carnotEfficiency);
+        efficiency = Math.max(0, efficiency);
+        
+        elements.efficiencyEl.textContent = efficiency.toFixed(1) + "%";
+        
+        // 将当前过程设置为5，表示循环完成
+        simulationState.currentProcess = 5;
+        updateProcessIndicator();
+        updateProcessStatus();
+        
+        // 显示总信息
+        elements.processDetailsEl.innerHTML += `
+          <p class="font-medium mt-3 text-primary">循环完成：</p>
+          <p>• 总功：${simulationState.totalWork.toFixed(2)} J</p>
+          <p>• 总吸热：${simulationState.totalHeatAbsorbed.toFixed(2)} J</p>
+          <p>• 总放热：${simulationState.totalHeatReleased.toFixed(2)} J</p>
+          <p>• 热机效率：${efficiency.toFixed(1)}%</p>
+          <p>• 理论效率：${carnotEfficiency.toFixed(1)}%</p>
+        `;
+        
+        // 停止仿真
+        simulationState.running = false;
+        simulationState.paused = false;
+        elements.startBtn.disabled = false;
+        elements.pauseBtn.disabled = true;
+        elements.stepBtn.disabled = false;
+        
+        return;
+      }
+      
+      // 进入下一过程
+      simulationState.currentProcess++;
+      simulationState.progress = 0;
+      updateProcessIndicator();
+    }
+    
+    // 绘制热机
+    function drawEngine() {
+      const canvas = elements.engineCanvas;
+      const ctx = engineCtx;
+      
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // 气缸位置和尺寸
+      const cylinderLeft = width * 0.2;
+      const cylinderRight = width * 0.8;
+      const cylinderTop = height * 0.1;
+      const cylinderBottom = height * 0.85;
+      
+      // 活塞位置根据当前体积变化
+      let pistonY;
+      const maxPistonY = cylinderBottom - 30;
+      const minPistonY = cylinderTop + 40;
+      
+      // 使用所有状态点的最小和最大体积来计算活塞位置
+      const minVolume = Math.min(
+        simulationState.points.A.v, 
+        simulationState.points.B.v, 
+        simulationState.points.C.v, 
+        simulationState.points.D.v
+      );
+      const maxVolume = Math.max(
+        simulationState.points.A.v, 
+        simulationState.points.B.v, 
+        simulationState.points.C.v, 
+        simulationState.points.D.v
+      );
+      
+      const volumeRatio = (simulationState.currentVolume - minVolume) / (maxVolume - minVolume);
+      pistonY = minPistonY + volumeRatio * (maxPistonY - minPistonY);
+      
+      // 确保活塞在容器范围内
+      pistonY = Math.max(minPistonY, Math.min(maxPistonY, pistonY));
+      
+      // 绘制高温热源
+      ctx.fillStyle = "rgba(245, 34, 45, 0.1)";
+      ctx.fillRect(width * 0.05, cylinderTop, width * 0.12, cylinderBottom - cylinderTop);
+      
+      ctx.strokeStyle = "rgba(245, 34, 45, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(width * 0.05, cylinderTop, width * 0.12, cylinderBottom - cylinderTop);
+      
+      // 绘制低温热源
+      ctx.fillStyle = "rgba(64, 150, 255, 0.1)";
+      ctx.fillRect(width * 0.83, cylinderTop, width * 0.12, cylinderBottom - cylinderTop);
+      
+      ctx.strokeStyle = "rgba(64, 150, 255, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(width * 0.83, cylinderTop, width * 0.12, cylinderBottom - cylinderTop);
+      
+      // 绘制气缸
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 4;
+      
+      // 气缸壁
+      ctx.beginPath();
+      ctx.moveTo(cylinderLeft, cylinderTop);
+      ctx.lineTo(cylinderLeft, cylinderBottom);
+      ctx.moveTo(cylinderRight, cylinderTop);
+      ctx.lineTo(cylinderRight, cylinderBottom);
+      ctx.stroke();
+      
+      // 气缸顶部和底部
+      ctx.beginPath();
+      ctx.moveTo(cylinderLeft, cylinderTop);
+      ctx.lineTo(cylinderRight, cylinderTop);
+      ctx.moveTo(cylinderLeft, cylinderBottom);
+      ctx.lineTo(cylinderRight, cylinderBottom);
+      ctx.stroke();
+      
+      // 绘制活塞
+      ctx.fillStyle = "#555";
+      ctx.fillRect(cylinderLeft - 2, pistonY - 8, cylinderRight - cylinderLeft + 4, 16);
+      
+      ctx.fillStyle = "#777";
+      ctx.fillRect(cylinderLeft, pistonY - 6, cylinderRight - cylinderLeft, 12);
+      
+      // 飞轮位置和尺寸
+      const flywheelX = width * 0.5;
+      const flywheelY = height * 0.9;
+      const flywheelRadius = width * 0.08;
+      
+      // 计算曲柄角度
+      let crankAngle = 0;
+      if (simulationState.currentProcess >= 1 && simulationState.currentProcess <= 4) {
+        const processProgress = (simulationState.currentProcess - 1) + simulationState.progress;
+        crankAngle = processProgress * Math.PI / 2;
+      }
+      
+      // 曲柄长度
+      const crankLength = flywheelRadius * 1.5;
+      
+      // 计算曲柄端点位置
+      const crankX = flywheelX + Math.cos(crankAngle) * crankLength;
+      const crankY = flywheelY + Math.sin(crankAngle) * crankLength;
+      
+      // 活塞中心位置
+      const pistonCenterX = width * 0.5;
+      const pistonCenterY = pistonY;
+      
+      // 绘制连杆
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(pistonCenterX, pistonCenterY);
+      ctx.lineTo(crankX, crankY);
+      ctx.stroke();
+      
+      // 绘制曲柄
+      ctx.strokeStyle = "#444";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(flywheelX, flywheelY);
+      ctx.lineTo(crankX, crankY);
+      ctx.stroke();
+      
+      // 绘制飞轮
+      drawRealisticFlywheel(ctx, flywheelX, flywheelY, flywheelRadius * 2, crankAngle);
+      
+      // 绘制分子
+      simulationState.molecules.forEach(mol => {
+        ctx.fillStyle = mol.color;
+        ctx.beginPath();
+        ctx.arc(mol.x, mol.y, mol.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+    
+    // 绘制飞轮
+    function drawRealisticFlywheel(ctx, x, y, size, rotation) {
+      const radius = size / 2;
+      
+      // 创建金属渐变
+      const metalGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      metalGradient.addColorStop(0, '#F0F0F0');
+      metalGradient.addColorStop(0.2, '#C0C0C0');
+      metalGradient.addColorStop(0.5, '#909090');
+      metalGradient.addColorStop(0.8, '#606060');
+      metalGradient.addColorStop(1, '#404040');
+      
+      // 飞轮外圈
+      ctx.fillStyle = metalGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 飞轮边缘
+      ctx.strokeStyle = '#202020';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // 飞轮内圈
+      ctx.fillStyle = '#303030';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 辐条
+      ctx.strokeStyle = '#505050';
+      ctx.lineWidth = radius * 0.08;
+      ctx.lineCap = 'round';
+      
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      
+      for (let i = 0; i < 6; i++) {
+        ctx.rotate(Math.PI / 3);
+        ctx.beginPath();
+        ctx.moveTo(radius * 0.4, 0);
+        ctx.lineTo(radius * 0.9, 0);
+        ctx.stroke();
+      }
+      
+      ctx.restore();
+      
+      // 中心轴
+      ctx.fillStyle = '#202020';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // 初始化程序
+    window.onload = init;
+  </script>
+</body>
+</html>

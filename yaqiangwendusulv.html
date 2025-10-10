@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>理想气体定律模拟 - 压强与温度关系</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .header .author {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+        }
+        
+        .simulation-section {
+            flex: 1;
+            min-width: 500px;
+            max-width: 600px;
+        }
+        
+        .distribution-section {
+            flex: 1;
+            min-width: 500px;
+            max-width: 600px;
+        }
+        
+        .panel {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+        }
+        
+        .panel h2 {
+            color: #1a2a6c;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            border-bottom: 2px solid #fdbb2d;
+            padding-bottom: 8px;
+        }
+        
+        #simulationCanvas {
+            border: 2px solid #1a2a6c;
+            background-color: #000;
+            border-radius: 8px;
+            width: 100%;
+            height: 400px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #1a2a6c;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1a2a6c;
+            cursor: pointer;
+            border: 2px solid #fdbb2d;
+        }
+        
+        .density-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .density-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background-color: #e3f2fd;
+            border: 2px solid #bbdefb;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .density-btn.active {
+            background-color: #1a2a6c;
+            color: white;
+            border-color: #fdbb2d;
+        }
+        
+        .density-btn:hover {
+            background-color: #bbdefb;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+            background-color: #1a2a6c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        button:hover {
+            background-color: #fdbb2d;
+            color: #1a2a6c;
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            background-color: #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .result-item {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: rgba(255,255,255,0.7);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .result-label {
+            font-weight: bold;
+            color: #1a2a6c;
+        }
+        
+        .result-value {
+            font-weight: 600;
+            color: #b21f1f;
+        }
+        
+        #distributionCanvas {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        
+        .statistical-rates {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .rate-item {
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f);
+            border-radius: 8px;
+            flex: 1;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .rate-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin: 5px 0;
+            color: #fdbb2d;
+        }
+        
+        .rate-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .physics-law {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.3rem;
+            color: #b21f1f;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .law-explanation {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .law-item {
+            flex: 1;
+            min-width: 250px;
+            padding: 15px;
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .law-item h3 {
+            color: #1a2a6c;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #fdbb2d;
+            padding-bottom: 5px;
+        }
+        
+        @media (max-width: 1100px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .simulation-section, .distribution-section {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>理想气体压强与温度变化现象仿真</h1>
+        <div class="author">作者：xatu_bai</div>
+    </div>
+    
+    <div class="main-container">
+        <div class="simulation-section">
+            <div class="panel">
+                <h2>气体分子运动模拟</h2>
+                <canvas id="simulationCanvas"></canvas>
+            </div>
+            
+            <div class="panel">
+                <h2>控制参数</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="temperature">气体温度: <span id="tempValue">300</span> K</label>
+                        <input type="range" id="temperature" min="100" max="1000" value="300">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>分子数密度:</label>
+                        <div class="density-buttons">
+                            <div class="density-btn" data-density="low">低密度</div>
+                            <div class="density-btn active" data-density="medium">中密度</div>
+                            <div class="density-btn" data-density="high">高密度</div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-buttons">
+                        <button id="startBtn">开始</button>
+                        <button id="pauseBtn">暂停</button>
+                        <button id="resetBtn">重置</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>物理量计算</h2>
+                <div class="results">
+                    <div class="result-item">
+                        <span class="result-label">分子平均平动动能:</span> 
+                        <span class="result-value" id="avgKineticEnergy">0</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">分子数密度:</span> 
+                        <span class="result-value" id="numberDensity">0</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">气体压强:</span> 
+                        <span class="result-value" id="pressure">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="distribution-section">
+            <div class="panel">
+                <h2>麦克斯韦速率分布</h2>
+                <canvas id="distributionCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #4CAF50;"></div>
+                        <span>麦克斯韦分布曲线</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #FF5722;"></div>
+                        <span>最概然速率 (v_p)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #2196F3;"></div>
+                        <span>平均速率 (v̄)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #9C27B0;"></div>
+                        <span>方均根速率 (v_rms)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>统计速率</h2>
+                <div class="statistical-rates">
+                    <div class="rate-item">
+                        <div class="rate-label">最概然速率</div>
+                        <div class="rate-value" id="mostProbableSpeed">0</div>
+                        <div class="rate-label">m/s</div>
+                    </div>
+                    <div class="rate-item">
+                        <div class="rate-label">平均速率</div>
+                        <div class="rate-value" id="averageSpeed">0</div>
+                        <div class="rate-label">m/s</div>
+                    </div>
+                    <div class="rate-item">
+                        <div class="rate-label">方均根速率</div>
+                        <div class="rate-value" id="rmsSpeed">0</div>
+                        <div class="rate-label">m/s</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="physics-law">
+        <div class="panel">
+            <h2>理想气体定律验证</h2>
+            <div class="formula">P = (2/3) * n * εₖ</div>
+            <div class="law-explanation">
+                <div class="law-item">
+                    <h3>压强公式</h3>
+                    <p>根据分子动理论，理想气体的压强与分子平均平动动能和分子数密度的关系为：</p>
+                    <p>P = (2/3) * n * εₖ</p>
+                    <p>其中：P为气体压强，n为分子数密度，εₖ为分子平均平动动能</p>
+                </div>
+                <div class="law-item">
+                    <h3>温度与动能</h3>
+                    <p>温度与分子平均平动动能的关系：</p>
+                    <p>εₖ = (3/2) * k * T</p>
+                    <p>其中k为玻尔兹曼常数(1.38×10⁻²³ J/K)，T为热力学温度</p>
+                </div>
+                <div class="law-item">
+                    <h3>麦克斯韦分布</h3>
+                    <p>麦克斯韦速率分布函数：</p>
+                    <p>f(v) = 4π (m/(2πkT))^(3/2) v² exp(-mv²/(2kT))</p>
+                    <p>描述气体分子在不同速率下的概率分布</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取Canvas和上下文
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const distCanvas = document.getElementById('distributionCanvas');
+        const distCtx = distCanvas.getContext('2d');
+        
+        // 设置Canvas尺寸
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 400;
+        distCanvas.width = distCanvas.offsetWidth;
+        distCanvas.height = 300;
+        
+        // 物理常数
+        const BOLTZMANN_CONSTANT = 1.38e-23; // 玻尔兹曼常数，单位J/K
+        const MOLECULAR_MASS = 4.65e-26; // 假设为氮气分子质量，单位kg
+        const SCALE_FACTOR = 1e10; // 缩放因子，将实际物理量转换为画布上的显示值
+        
+        // 分子数组和参数
+        let molecules = [];
+        let moleculeCount = 200; // 默认中密度
+        let temperature = 300; // 初始温度，单位K
+        let isRunning = true;
+        let animationId = null;
+        
+        // 密度档位对应的分子数量
+        const densitySettings = {
+            'low': 100,
+            'medium': 200,
+            'high': 300
+        };
+        
+        // 分子类
+        class Molecule {
+            constructor(x, y) {
+                this.radius = 3;
+                this.x = x;
+                this.y = y;
+                
+                // 根据温度计算速度（温度越高，速度越大）
+                const kineticEnergy = 1.5 * BOLTZMANN_CONSTANT * temperature;
+                const speed = Math.sqrt(2 * kineticEnergy) * SCALE_FACTOR;
+                
+                // 随机方向
+                const angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                
+                // 统一设置为蓝色
+                this.color = '#2196f3';
+            }
+            
+            update() {
+                // 更新位置
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // 与容器壁碰撞（完全弹性碰撞）
+                if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                    this.vx = -this.vx;
+                    this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                }
+                if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+                    this.vy = -this.vy;
+                    this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+                }
+            }
+            
+            draw() {
+                // 绘制分子
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // 添加光晕效果
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + 2, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(33, 150, 243, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // 获取分子动能
+            getKineticEnergy() {
+                const actualVx = this.vx / SCALE_FACTOR;
+                const actualVy = this.vy / SCALE_FACTOR;
+                return 0.5 * (actualVx * actualVx + actualVy * actualVy);
+            }
+            
+            // 获取分子速率
+            getSpeed() {
+                const actualVx = this.vx / SCALE_FACTOR;
+                const actualVy = this.vy / SCALE_FACTOR;
+                return Math.sqrt(actualVx * actualVx + actualVy * actualVy);
+            }
+            
+            checkCollision(other) {
+                const dx = other.x - this.x;
+                const dy = other.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.radius + other.radius) {
+                    // 计算碰撞后的速度（弹性碰撞）
+                    const nx = dx / distance;
+                    const ny = dy / distance;
+                    
+                    const tx = -ny;
+                    const ty = nx;
+                    
+                    // 投影速度到法向和切向
+                    const v1n = this.vx * nx + this.vy * ny;
+                    const v1t = this.vx * tx + this.vy * ty;
+                    const v2n = other.vx * nx + other.vy * ny;
+                    const v2t = other.vx * tx + other.vy * ty;
+                    
+                    // 交换法向速度（质量相同）
+                    this.vx = v2n * nx + v1t * tx;
+                    this.vy = v2n * ny + v1t * ty;
+                    other.vx = v1n * nx + v2t * tx;
+                    other.vy = v1n * ny + v2t * ty;
+                    
+                    // 分离分子防止重叠
+                    const overlap = 0.5 * (this.radius + other.radius - distance + 1);
+                    this.x -= overlap * nx;
+                    this.y -= overlap * ny;
+                    other.x += overlap * nx;
+                    other.y += overlap * ny;
+                }
+            }
+        }
+        
+        // 初始化分子
+        function initMolecules() {
+            molecules = [];
+            const containerWidth = canvas.width;
+            const containerHeight = canvas.height;
+            
+            for (let i = 0; i < moleculeCount; i++) {
+                const x = Math.random() * (containerWidth - 10) + 5;
+                const y = Math.random() * (containerHeight - 10) + 5;
+                
+                molecules.push(new Molecule(x, y));
+            }
+            updatePhysicsValues();
+            updateDistributionChart();
+        }
+        
+        // 计算并更新物理量
+        function updatePhysicsValues() {
+            if (molecules.length === 0) return;
+            
+            // 计算平均平动动能
+            let totalKineticEnergy = 0;
+            molecules.forEach(mol => {
+                totalKineticEnergy += mol.getKineticEnergy();
+            });
+            const avgKineticEnergy = totalKineticEnergy / molecules.length;
+            
+            // 计算分子数密度（分子数/面积，转换为实际单位 m⁻²）
+            const canvasArea = (canvas.width * 1e-6) * (canvas.height * 1e-6); // 平方米
+            const numberDensity = moleculeCount / canvasArea;
+            
+            // 计算压强 P = (2/3) * n * εₖ
+            const pressure = (2/3) * numberDensity * avgKineticEnergy;
+            
+            // 更新显示
+            document.getElementById('avgKineticEnergy').textContent = avgKineticEnergy.toExponential(2) + " J";
+            document.getElementById('numberDensity').textContent = numberDensity.toExponential(2) + " 分子/m²";
+            document.getElementById('pressure').textContent = pressure.toExponential(2) + " Pa";
+        }
+        
+        // 计算麦克斯韦速率分布
+        function maxwellDistribution(v, T) {
+            const k = BOLTZMANN_CONSTANT;
+            const m = MOLECULAR_MASS;
+            const coefficient = 4 * Math.PI * Math.pow(m / (2 * Math.PI * k * T), 1.5);
+            return coefficient * v * v * Math.exp(-m * v * v / (2 * k * T));
+        }
+        
+        // 计算三种统计速率
+        function calculateStatisticalSpeeds(T) {
+            const k = BOLTZMANN_CONSTANT;
+            const m = MOLECULAR_MASS;
+            
+            // 最概然速率
+            const vp = Math.sqrt(2 * k * T / m);
+            
+            // 平均速率
+            const v_avg = Math.sqrt(8 * k * T / (Math.PI * m));
+            
+            // 方均根速率
+            const v_rms = Math.sqrt(3 * k * T / m);
+            
+            return { vp, v_avg, v_rms };
+        }
+        
+        // 更新分布图表
+        function updateDistributionChart() {
+            // 清空画布
+            distCtx.clearRect(0, 0, distCanvas.width, distCanvas.height);
+            
+            // 设置图表区域
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+            const width = distCanvas.width - margin.left - margin.right;
+            const height = distCanvas.height - margin.top - margin.bottom;
+            
+            // 计算统计速率
+            const speeds = calculateStatisticalSpeeds(temperature);
+            
+            // 更新统计速率显示
+            document.getElementById('mostProbableSpeed').textContent = speeds.vp.toFixed(1);
+            document.getElementById('averageSpeed').textContent = speeds.v_avg.toFixed(1);
+            document.getElementById('rmsSpeed').textContent = speeds.v_rms.toFixed(1);
+            
+            // 确定速率范围
+            const maxSpeed = Math.max(speeds.vp, speeds.v_avg, speeds.v_rms) * 2.5;
+            
+            // 计算分布函数的最大值
+            let maxF = 0;
+            const step = maxSpeed / 100;
+            for (let v = 0; v <= maxSpeed; v += step) {
+                const f = maxwellDistribution(v, temperature);
+                if (f > maxF) maxF = f;
+            }
+            
+            // 绘制坐标轴
+            distCtx.strokeStyle = '#333';
+            distCtx.lineWidth = 1;
+            distCtx.beginPath();
+            distCtx.moveTo(margin.left, margin.top);
+            distCtx.lineTo(margin.left, margin.top + height);
+            distCtx.lineTo(margin.left + width, margin.top + height);
+            distCtx.stroke();
+            
+            // 绘制坐标轴标签
+            distCtx.fillStyle = '#333';
+            distCtx.font = '12px Arial';
+            distCtx.textAlign = 'center';
+            distCtx.fillText('速率 (m/s)', margin.left + width / 2, margin.top + height + 30);
+            distCtx.save();
+            distCtx.translate(margin.left - 30, margin.top + height / 2);
+            distCtx.rotate(-Math.PI / 2);
+            distCtx.textAlign = 'center';
+            distCtx.fillText('概率密度', 0, 0);
+            distCtx.restore();
+            
+            // 绘制分布曲线
+            distCtx.strokeStyle = '#4CAF50';
+            distCtx.lineWidth = 2;
+            distCtx.beginPath();
+            
+            for (let v = 0; v <= maxSpeed; v += step) {
+                const f = maxwellDistribution(v, temperature);
+                const x = margin.left + (v / maxSpeed) * width;
+                const y = margin.top + height - (f / maxF) * height;
+                
+                if (v === 0) {
+                    distCtx.moveTo(x, y);
+                } else {
+                    distCtx.lineTo(x, y);
+                }
+            }
+            distCtx.stroke();
+            
+            // 绘制三种统计速率的垂直线
+            const colors = ['#FF5722', '#2196F3', '#9C27B0'];
+            const labels = ['v_p', 'v̄', 'v_rms'];
+            const values = [speeds.vp, speeds.v_avg, speeds.v_rms];
+            
+            for (let i = 0; i < 3; i++) {
+                const x = margin.left + (values[i] / maxSpeed) * width;
+                
+                distCtx.strokeStyle = colors[i];
+                distCtx.lineWidth = 2;
+                distCtx.beginPath();
+                distCtx.moveTo(x, margin.top + height);
+                distCtx.lineTo(x, margin.top);
+                distCtx.stroke();
+                
+                // 添加标签
+                distCtx.fillStyle = colors[i];
+                distCtx.font = 'bold 12px Arial';
+                distCtx.textAlign = 'center';
+                distCtx.fillText(labels[i], x, margin.top - 5);
+            }
+            
+            // 添加刻度
+            distCtx.strokeStyle = '#ccc';
+            distCtx.lineWidth = 0.5;
+            distCtx.textAlign = 'center';
+            distCtx.fillStyle = '#666';
+            distCtx.font = '10px Arial';
+            
+            // x轴刻度
+            for (let i = 0; i <= 5; i++) {
+                const v = (i / 5) * maxSpeed;
+                const x = margin.left + (i / 5) * width;
+                
+                distCtx.beginPath();
+                distCtx.moveTo(x, margin.top + height);
+                distCtx.lineTo(x, margin.top + height + 5);
+                distCtx.stroke();
+                
+                distCtx.fillText(v.toFixed(0), x, margin.top + height + 15);
+            }
+            
+            // y轴刻度
+            for (let i = 0; i <= 5; i++) {
+                const f = (i / 5) * maxF;
+                const y = margin.top + height - (i / 5) * height;
+                
+                distCtx.beginPath();
+                distCtx.moveTo(margin.left, y);
+                distCtx.lineTo(margin.left - 5, y);
+                distCtx.stroke();
+                
+                distCtx.textAlign = 'right';
+                distCtx.fillText(f.toExponential(1), margin.left - 8, y + 3);
+            }
+        }
+        
+        // 动画循环
+        function animate() {
+            // 清空画布
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制容器边框
+            ctx.strokeStyle = '#4deeea';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            // 更新所有分子
+            molecules.forEach(mol => mol.update());
+            
+            // 检测碰撞 - 使用随机采样以提高性能
+            const collisionCheckCount = Math.min(moleculeCount, 100);
+            
+            for (let i = 0; i < collisionCheckCount; i++) {
+                const index1 = Math.floor(Math.random() * molecules.length);
+                const index2 = Math.floor(Math.random() * molecules.length);
+                
+                if (index1 === index2) continue;
+                
+                molecules[index1].checkCollision(molecules[index2]);
+            }
+            
+            // 绘制所有分子
+            molecules.forEach(mol => mol.draw());
+            
+            // 每30帧更新一次物理量计算（提高性能）
+            if (Math.random() < 1/30) {
+                updatePhysicsValues();
+            }
+            
+            // 继续动画循环
+            if (isRunning) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        // 事件监听
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            initMolecules();
+            isRunning = true;
+            animate();
+        });
+        
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            temperature = parseInt(e.target.value);
+            document.getElementById('tempValue').textContent = temperature;
+            
+            // 根据新温度调整分子速度
+            molecules.forEach(mol => {
+                // 保持方向不变，调整速度大小以匹配新温度
+                const currentSpeed = Math.sqrt(mol.vx * mol.vx + mol.vy * mol.vy);
+                if (currentSpeed > 0) {
+                    const kineticEnergy = 1.5 * BOLTZMANN_CONSTANT * temperature;
+                    const newSpeed = Math.sqrt(2 * kineticEnergy) * SCALE_FACTOR;
+                    const ratio = newSpeed / currentSpeed;
+                    mol.vx *= ratio;
+                    mol.vy *= ratio;
+                }
+            });
+            updatePhysicsValues();
+            updateDistributionChart();
+        });
+        
+        // 分子数密度按钮事件
+        const densityButtons = document.querySelectorAll('.density-btn');
+        densityButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 移除所有按钮的active类
+                densityButtons.forEach(b => b.classList.remove('active'));
+                // 给当前按钮添加active类
+                btn.classList.add('active');
+                
+                // 更新分子数量
+                const density = btn.getAttribute('data-density');
+                moleculeCount = densitySettings[density];
+                
+                // 重新初始化分子
+                initMolecules();
+            });
+        });
+        
+        // 窗口大小变化时重新绘制分布图
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.offsetWidth;
+            distCanvas.width = distCanvas.offsetWidth;
+            initMolecules();
+        });
+        
+        // 初始化并启动
+        initMolecules();
+        animate();
+    </script>
+</body>
+</html>
