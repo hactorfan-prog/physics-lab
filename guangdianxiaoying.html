@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光电效应现象仿真</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-7xl mx-auto p-5">
+        <!-- 标题和作者信息 -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">光电效应现象仿真</h1>
+            <div class="text-gray-600 font-medium">作者：xatu_bai</div>
+        </div>
+        
+        <div class="flex flex-wrap gap-5">
+            <!-- 控制面板 -->
+            <div class="bg-white rounded-lg shadow-md p-5 w-full md:w-80">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">参数调节</h2>
+                
+                <div class="mb-6">
+                    <label class="block mb-2 font-medium" for="frequency">入射光频率 (×10¹⁴Hz):</label>
+                    <input type="range" id="frequency" min="4" max="12" value="6" step="0.1"
+                           class="w-full accent-blue-500">
+                    <div class="flex justify-between text-sm mt-1">
+                        <span>4.0 (红光)</span>
+                        <span id="frequencyValue">6.0</span>
+                        <span>12.0 (紫外光)</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block mb-2 font-medium" for="intensity">光强 (相对值):</label>
+                    <input type="range" id="intensity" min="1" max="10" value="5"
+                           class="w-full accent-green-500">
+                    <div class="flex justify-between text-sm mt-1">
+                        <span>弱</span>
+                        <span id="intensityValue">5</span>
+                        <span>强</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block mb-2 font-medium" for="material">金属材料:</label>
+                    <select id="material" class="w-full p-2 border border-gray-300 rounded">
+                        <option value="cesium">铯 (Cs) - 逸出功 1.95 eV</option>
+                        <option value="sodium">钠 (Na) - 逸出功 2.28 eV</option>
+                        <option value="copper">铜 (Cu) - 逸出功 4.70 eV</option>
+                        <option value="platinum">铂 (Pt) - 逸出功 6.35 eV</option>
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block mb-2 font-medium" for="voltage">外加电压 (V):</label>
+                    <input type="range" id="voltage" min="-6" max="6" value="0" step="0.1"
+                           class="w-full accent-red-500">
+                    <div class="flex justify-between text-sm mt-1">
+                        <span>-6.0 V (反向)</span>
+                        <span id="voltageValue">0.0</span>
+                        <span>6.0 V (正向)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 结果展示区域 -->
+            <div class="flex-1 bg-white rounded-lg shadow-md p-5">
+                <!-- 标准I-U曲线区域 - 放在最上面 -->
+                <div class="h-[300px] mb-6">
+                    <canvas id="standardIUCurve"></canvas>
+                </div>
+                
+                <!-- 关键数据卡片 - 改为两行布局 -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-3 border-l-4 border-blue-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">逸出功 (W₀)</h3>
+                        <p id="workFunction" class="text-lg font-bold text-blue-600">2.28 eV</p>
+                    </div>
+                    
+                    <div class="bg-indigo-50 rounded-lg p-3 border-l-4 border-indigo-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">光子能量 (hν)</h3>
+                        <p id="photonEnergy" class="text-lg font-bold text-indigo-600">2.48 eV</p>
+                    </div>
+                    
+                    <div class="bg-green-50 rounded-lg p-3 border-l-4 border-green-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">截止频率 (ν₀)</h3>
+                        <p id="thresholdFrequency" class="text-lg font-bold text-green-600">5.50 ×10¹⁴Hz</p>
+                    </div>
+                    
+                    <div class="bg-yellow-50 rounded-lg p-3 border-l-4 border-yellow-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">遏止电压 (U₀)</h3>
+                        <p id="stoppingVoltage" class="text-lg font-bold text-yellow-600">0.32 V</p>
+                    </div>
+                    
+                    <div class="bg-red-50 rounded-lg p-3 border-l-4 border-red-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">当前光电流 (I)</h3>
+                        <p id="photocurrent" class="text-lg font-bold text-red-600">0.0 μA</p>
+                    </div>
+                    
+                    <div class="bg-purple-50 rounded-lg p-3 border-l-4 border-purple-500">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">饱和光电流 (Iₘₐₓ)</h3>
+                        <p id="saturationCurrent" class="text-lg font-bold text-purple-600">2.5 μA</p>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-gray-500 col-span-2">
+                        <h3 class="text-sm font-medium text-gray-700 mb-1">光电效应状态</h3>
+                        <p id="effectStatus" class="text-lg font-bold text-gray-600">产生</p>
+                    </div>
+                </div>
+                
+                <!-- 公式展示 -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">核心公式</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <p class="text-center font-serif">光子能量: E = hν</p>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <p class="text-center font-serif">爱因斯坦方程: Eₖₘₐₓ = hν - W₀</p>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <p class="text-center font-serif">遏止电压: eU₀ = Eₖₘₐₓ</p>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <p class="text-center font-serif">截止频率: ν₀ = W₀/h</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 物理常数
+        const h = 4.135667696e-15;  // 普朗克常数 (eV·s)
+        
+        // 金属材料参数 (逸出功 eV)
+        const materials = {
+            cesium: { name: '铯 (Cs)', workFunction: 1.95 },
+            sodium: { name: '钠 (Na)', workFunction: 2.28 },
+            copper: { name: '铜 (Cu)', workFunction: 4.70 },
+            platinum: { name: '铂 (Pt)', workFunction: 6.35 }
+        };
+        
+        // 获取DOM元素
+        const frequencySlider = document.getElementById('frequency');
+        const frequencyValue = document.getElementById('frequencyValue');
+        const intensitySlider = document.getElementById('intensity');
+        const intensityValue = document.getElementById('intensityValue');
+        const materialSelect = document.getElementById('material');
+        const voltageSlider = document.getElementById('voltage');
+        const voltageValue = document.getElementById('voltageValue');
+        
+        // 结果显示元素
+        const workFunctionDisplay = document.getElementById('workFunction');
+        const photonEnergyDisplay = document.getElementById('photonEnergy');
+        const thresholdFrequencyDisplay = document.getElementById('thresholdFrequency');
+        const stoppingVoltageDisplay = document.getElementById('stoppingVoltage');
+        const photocurrentDisplay = document.getElementById('photocurrent');
+        const saturationCurrentDisplay = document.getElementById('saturationCurrent');
+        const effectStatusDisplay = document.getElementById('effectStatus');
+        
+        // 初始化标准I-U曲线图
+        const ctx = document.getElementById('standardIUCurve').getContext('2d');
+        let chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '当前I-U曲线',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4
+                }, {
+                    label: '当前工作点',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgb(255, 99, 132)',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    fill: false
+                }, {
+                    label: '遏止电压线',
+                    data: [],
+                    borderColor: 'rgba(255, 159, 64, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: '外加电压 (V)',
+                            font: { size: 14 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        min: -6,
+                        max: 6,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '光电流 (μA)',
+                            font: { size: 14 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        min: 0,
+                        max: 5,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: (${context.parsed.x.toFixed(1)}V, ${context.parsed.y.toFixed(1)}μA)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 存储当前曲线数据用于红点计算
+        let currentCurveData = [];
+        
+        // 实时更新参数
+        frequencySlider.addEventListener('input', () => {
+            frequencyValue.textContent = frequencySlider.value;
+            calculateResults();
+        });
+        
+        intensitySlider.addEventListener('input', () => {
+            intensityValue.textContent = intensitySlider.value;
+            calculateResults();
+        });
+        
+        materialSelect.addEventListener('change', calculateResults);
+        
+        voltageSlider.addEventListener('input', () => {
+            voltageValue.textContent = voltageSlider.value;
+            updateWorkingPoint();
+        });
+        
+        // 初始化计算
+        calculateResults();
+        
+        function calculateResults() {
+            // 获取当前参数
+            const frequency = parseFloat(frequencySlider.value) * 1e14;
+            const intensity = parseInt(intensitySlider.value);
+            const materialKey = materialSelect.value;
+            const material = materials[materialKey];
+            const appliedVoltage = parseFloat(voltageSlider.value);
+            
+            // 计算关键物理量
+            const workFunction = material.workFunction;
+            const photonEnergy = h * frequency;
+            const thresholdFrequency = workFunction / h / 1e14;
+            
+            // 判断是否产生光电效应
+            const hasEffect = photonEnergy > workFunction;
+            
+            // 计算遏止电压
+            let stoppingVoltage = 0;
+            if (hasEffect) {
+                stoppingVoltage = (photonEnergy - workFunction);
+            }
+            
+            // 计算饱和光电流
+            const saturationCurrent = intensity * 0.5;
+            
+            // 更新数值显示
+            updateDisplays(
+                workFunction, 
+                photonEnergy,
+                thresholdFrequency, 
+                stoppingVoltage, 
+                0,
+                saturationCurrent, 
+                hasEffect
+            );
+            
+            // 更新标准I-U曲线
+            updateStandardIUCurve(stoppingVoltage, saturationCurrent, hasEffect);
+            
+            // 更新工作点
+            updateWorkingPoint();
+        }
+        
+        function updateWorkingPoint() {
+            const appliedVoltage = parseFloat(voltageSlider.value);
+            
+            // 从当前曲线数据中查找对应的电流值
+            let photocurrent = 0;
+            for (let i = 0; i < currentCurveData.length - 1; i++) {
+                const point1 = currentCurveData[i];
+                const point2 = currentCurveData[i + 1];
+                
+                if (appliedVoltage >= point1.x && appliedVoltage <= point2.x) {
+                    // 线性插值计算电流
+                    const ratio = (appliedVoltage - point1.x) / (point2.x - point1.x);
+                    photocurrent = point1.y + ratio * (point2.y - point1.y);
+                    break;
+                }
+            }
+            
+            // 更新光电流显示
+            photocurrentDisplay.textContent = `${photocurrent.toFixed(1)} μA`;
+            
+            // 更新工作点
+            chart.data.datasets[1].data = [{x: appliedVoltage, y: photocurrent}];
+            chart.update('none');
+        }
+        
+        function updateDisplays(workFunction, photonEnergy, thresholdFrequency, stoppingVoltage, photocurrent, saturationCurrent, hasEffect) {
+            workFunctionDisplay.textContent = `${workFunction.toFixed(2)} eV`;
+            photonEnergyDisplay.textContent = `${photonEnergy.toFixed(2)} eV`;
+            thresholdFrequencyDisplay.textContent = `${thresholdFrequency.toFixed(2)} ×10¹⁴Hz`;
+            stoppingVoltageDisplay.textContent = `${hasEffect ? stoppingVoltage.toFixed(2) : '0.00'} V`;
+            saturationCurrentDisplay.textContent = `${saturationCurrent.toFixed(1)} μA`;
+            effectStatusDisplay.textContent = hasEffect ? '产生' : '不产生';
+            effectStatusDisplay.style.color = hasEffect ? 'rgb(22, 163, 74)' : 'rgb(220, 38, 38)';
+            
+            // 根据光子能量与逸出功的关系设置颜色
+            if (photonEnergy > workFunction) {
+                photonEnergyDisplay.style.color = 'rgb(22, 163, 74)'; // 绿色 - 足够产生光电效应
+            } else {
+                photonEnergyDisplay.style.color = 'rgb(220, 38, 38)'; // 红色 - 不足以产生光电效应
+            }
+        }
+        
+        function updateStandardIUCurve(stoppingVoltage, saturationCurrent, hasEffect) {
+            // 生成标准I-U曲线数据点
+            currentCurveData = [];
+            const stoppingVoltagePoints = [];
+            
+            for (let u = -6; u <= 6; u += 0.1) {
+                let current = 0;
+                
+                if (hasEffect) {
+                    if (u >= -stoppingVoltage) {
+                        // 使用S形函数创建平滑过渡
+                        const normalizedVoltage = (u + stoppingVoltage) / (stoppingVoltage + 2);
+                        const sigmoid = 1 / (1 + Math.exp(-8 * (normalizedVoltage - 0.5)));
+                        current = saturationCurrent * sigmoid;
+                    }
+                }
+                
+                currentCurveData.push({x: u, y: current});
+                
+                // 遏止电压辅助线
+                if (hasEffect && Math.abs(u - (-stoppingVoltage)) < 0.05) {
+                    stoppingVoltagePoints.push(
+                        {x: -stoppingVoltage, y: 0},
+                        {x: -stoppingVoltage, y: saturationCurrent}
+                    );
+                }
+            }
+            
+            // 更新图表数据
+            chart.data.datasets[0].data = currentCurveData;
+            chart.data.datasets[2].data = stoppingVoltagePoints;
+            
+            chart.update('none');
+        }
+    </script>
+</body>
+</html>

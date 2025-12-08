@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分光计与光栅衍射实验虚拟仿真</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            padding: 15px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 15px;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 15px;
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* 实验装置区 */
+        .apparatus-section {
+            grid-column: 1;
+        }
+
+        /* 分光计主体 - 减小尺寸 */
+        .spectrometer {
+            width: 280px;
+            height: 280px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            position: relative;
+            margin: 0 auto 15px;
+            overflow: hidden;
+        }
+
+        /* 刻度盘整体（含望远镜、刻度） */
+        .scale-group {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform-origin: center;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* 刻度盘 */
+        .scale {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            border-radius: 50%;
+            background-color: rgba(0,0,0,0.2);
+        }
+
+        /* 刻度标记 */
+        .scale-mark {
+            position: absolute;
+            width: 10px;
+            height: 1.5px;
+            background-color: rgba(255,255,255,0.8);
+            top: 50%;
+            left: 0;
+            transform-origin: 140px 0;
+        }
+
+        /* 望远镜 - 减小尺寸 */
+        .telescope {
+            position: absolute;
+            width: 130px;
+            height: 25px;
+            background-color: #3498db;
+            left: calc(50% - 130px);
+            top: 50%;
+            transform-origin: right center;
+            transform: translateY(-50%);
+            border-radius: 4px 0 0 4px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid #2980b9;
+        }
+
+        /* 望远镜镜头 */
+        .telescope .lens {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.4);
+            right: -12.5px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 1.5px solid #2980b9;
+        }
+
+        /* 平行光管 - 减小尺寸 */
+        .collimator {
+            position: absolute;
+            width: 110px;
+            height: 22px;
+            background-color: #3498db;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 3px 0 0 3px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding-left: 8px;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        /* 平行光管镜头 */
+        .collimator .lens {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.4);
+            left: -11px;
+            top: 0;
+        }
+
+        /* 光源 - 减小尺寸 */
+        .light-source {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #f1c40f;
+            right: -35px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 50%;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.7rem;
+            box-shadow: 0 0 10px 3px rgba(241, 196, 15, 0.5);
+        }
+
+        /* 载物台 - 减小尺寸 */
+        .stage {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            background-color: #7f8c8d;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            border: 1.5px solid #555;
+        }
+
+        /* 光栅（中心部件）- 减小尺寸 */
+        .grating {
+            width: 35px;
+            height: 35px;
+            background-color: #ecf0f1;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-image: linear-gradient(to right, 
+                rgba(0,0,0,0.3) 1.5px, transparent 1.5px, 
+                transparent 4px, rgba(0,0,0,0.3) 4px, 
+                rgba(0,0,0,0.3) 5.5px, transparent 5.5px);
+            background-size: 7px 100%;
+            z-index: 3;
+        }
+
+        /* 游标读数显示器 - 减小尺寸 */
+        .angle-display {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        /* 光谱显示区 - 减小尺寸 */
+        .spectrum {
+            width: 100%;
+            height: 170px;
+            background-color: #0a0a0a;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 15px;
+            border: 1px solid #333;
+        }
+
+        /* 光谱线 */
+        .spectrum-line {
+            position: absolute;
+            height: 70%;
+            width: 2px;
+            top: 15%;
+            transform: translateX(-50%);
+            transition: all 0.2s;
+            opacity: 0.6;
+            box-shadow: 0 0 4px 1px currentColor;
+            color: inherit;
+        }
+
+        .spectrum-line.active {
+            opacity: 1;
+            box-shadow: 0 0 10px 2px currentColor;
+            height: 90%;
+            top: 5%;
+            width: 3px;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px 2px currentColor; }
+            50% { box-shadow: 0 0 15px 3px currentColor; }
+        }
+
+        .spectrum-label {
+            position: absolute;
+            bottom: 3px;
+            color: white;
+            font-size: 10px;
+            transform: translateX(-50%);
+            text-shadow: 0 0 2px #000;
+        }
+
+        /* 十字叉丝 */
+        .crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+            transition: left 0.05s linear;
+            will-change: left;
+        }
+
+        .crosshair-vertical {
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background-color: red;
+            left: 50%;
+            z-index: 6;
+        }
+
+        .crosshair-horizontal {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background-color: red;
+            top: 50%;
+            z-index: 6;
+        }
+
+        /* 控制面板样式 */
+        .control-section {
+            grid-column: 3;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background-color: #eee;
+            border-radius: 2px;
+            outline: none;
+            margin-bottom: 6px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #3498db;
+            cursor: pointer;
+        }
+
+        .value-display {
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+            background-color: #f0f0f0;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+
+        /* 光源选择按钮组 */
+        .light-selector {
+            margin-bottom: 12px;
+        }
+
+        .light-type-group {
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #444;
+            font-size: 0.85rem;
+        }
+
+        .light-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 6px 0;
+        }
+
+        .light-btn {
+            padding: 6px 10px;
+            border: 1.5px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .light-btn.active {
+            border-color: #3498db;
+            background-color: #e8f4fd;
+            color: #2980b9;
+            font-weight: 500;
+        }
+
+        .light-btn:hover {
+            border-color: #3498db;
+        }
+
+        .light-btn .light-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+            font-size: 0.8rem;
+        }
+
+        .light-btn .light-desc {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        /* 数据记录区 */
+        .data-section {
+            grid-column: 2;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 0.75rem;
+        }
+
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .data-table th {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .formula {
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-radius: 3px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 0.9rem;
+            border-left: 2px solid #3498db;
+        }
+
+        .result {
+            background-color: #e8f4fd;
+            padding: 10px;
+            border-radius: 3px;
+            margin-top: 10px;
+            border-left: 2px solid #2980b9;
+            font-size: 0.8rem;
+        }
+
+       .calculation-details {
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 3px;
+    margin: 8px 0;
+    font-family: 'Times New Roman', Times, serif; /* 改为 Times New Roman 字体 */
+    font-size: 1.00rem;
+    font-weight: bold; /* 添加加粗效果 */
+    border-left: 2px solid #27ae60;
+}
+
+        /* 实验步骤区域 */
+        .instructions {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 0.8rem;
+        }
+
+        .instructions h4 {
+            margin-bottom: 6px;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .instructions ol {
+            margin-left: 15px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+        }
+
+        .vernier-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .vernier {
+            background-color: #f8f9fa;
+            padding: 6px 8px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+            font-size: 0.8rem;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .apparatus-section, .data-section, .control-section {
+                grid-column: 1;
+            }
+            .spectrometer {
+                width: 250px;
+                height: 250px;
+            }
+            .scale-mark {
+                transform-origin: 125px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>分光计与光栅衍射实验虚拟仿真</h1>
+            <p class="subtitle">游标读数系统 | 衍射角计算 | 数据处理流程</p>
+        </header>
+
+        <!-- 实验装置区 -->
+        <div class="card apparatus-section">
+            <h2 class="section-title">实验装置</h2>
+            <div class="spectrometer">
+                <!-- 刻度盘整体（含刻度、望远镜） -->
+                <div class="scale-group" id="scaleGroup">
+                    <div class="scale" id="scale"></div>
+                    <!-- 望远镜 -->
+                    <div class="telescope" id="telescope">
+                        望远镜
+                        <div class="lens"></div>
+                    </div>
+                </div>
+                <!-- 平行光管 -->
+                <div class="collimator">
+                    平行光管
+                    <div class="lens"></div>
+                </div>
+                <!-- 光源（平行光管外侧） -->
+                <div class="light-source">汞灯</div>
+                <!-- 载物台 -->
+                <div class="stage"></div>
+                <!-- 光栅（中心部件） -->
+                <div class="grating" id="grating"></div>
+                <!-- 游标读数显示器 -->
+                <div class="angle-display">
+                    <div>左游标: <span id="leftVernier">0°00′</span></div>
+                    <div>右游标: <span id="rightVernier">0°00′</span></div>
+                </div>
+            </div>
+
+            <!-- 实验步骤区域 -->
+            <div class="instructions">
+                <h4>实验步骤：</h4>
+                <ol>
+                    <li>选择光源类型（建议使用汞灯）</li>
+                    <li>设置光栅常数（建议600线/mm）</li>
+                    <li>调节望远镜角度滑块，观察十字叉丝在光谱上移动</li>
+                    <li>当叉丝与某条谱线重合时，谱线会自动高亮</li>
+                    <li>点击"记录当前游标读数"保存左右游标读数</li>
+                    <li>记录同一谱线的正负级次数据后，点击"计算衍射角"</li>
+                    <li>记录多个谱线数据后，点击"计算波长"获取结果</li>
+                    <li>最后进行误差分析和不确定度分析</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- 数据记录区 -->
+        <div class="card data-section">
+            <h2 class="section-title">衍射光谱</h2>
+            <div class="spectrum" id="spectrum">
+                <div class="crosshair" id="crosshair">
+                    <div class="crosshair-vertical"></div>
+                    <div class="crosshair-horizontal"></div>
+                </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.75rem; color: #666;">
+                提示：调节望远镜角度，十字叉丝同步移动，对准谱线时谱线高亮且与叉丝重合
+            </div>
+
+            <!-- 原始数据记录 -->
+            <h2 class="section-title">原始数据记录</h2>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">谱线</th>
+                        <th rowspan="2">级次K</th>
+                        <th colspan="2">正级次</th>
+                        <th colspan="2">负级次</th>
+                    </tr>
+                    <tr>
+                        <th>左游标读数</th>
+                        <th>右游标读数</th>
+                        <th>左游标读数</th>
+                        <th>右游标读数</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTable">
+                    <!-- 数据行将在这里动态添加 -->
+                </tbody>
+            </table>
+
+            <!-- 数据处理区域 -->
+            <h2 class="section-title">数据处理</h2>
+            <div class="control-group">
+                <button id="calcDiffractionBtn">计算衍射角</button>
+                <button id="calcWavelengthBtn" disabled>计算波长</button>
+                <button id="errorBtn" disabled>误差分析</button>
+                <button id="uncertaintyBtn" disabled>不确定度分析</button>
+            </div>
+
+            <div class="formula">
+                光栅方程：d·sinθ = k·λ （d为光栅常数，k为衍射级次，λ为光波波长）
+            </div>
+
+            <div class="result" id="result">
+                数据处理结果将显示在这里
+            </div>
+        </div>
+
+        <!-- 控制面板区 -->
+        <div class="card control-section">
+            <h2 class="section-title">实验控制</h2>
+
+            <!-- 光源选择 -->
+            <div class="control-group light-selector">
+                <label>光源选择：</label>
+                
+                <div class="light-type-group">复色光源</div>
+                <div class="light-buttons">
+                    <button class="light-btn active" data-light="mercury" data-name="汞灯">
+                        <span class="light-name">汞灯</span>
+                        <span class="light-desc">多谱线，实验常用</span>
+                    </button>
+                </div>
+
+                <div class="light-type-group">单色光源</div>
+                <div class="light-buttons">
+                    <button class="light-btn" data-light="sodium" data-name="钠灯">
+                        <span class="light-name">钠灯</span>
+                        <span class="light-desc">双黄线，单色性好</span>
+                    </button>
+                    <button class="light-btn" data-light="mono" data-name="单色光">
+                        <span class="light-name">单色光</span>
+                        <span class="light-desc">波长可调节</span>
+                    </button>
+                </div>
+
+                <div class="light-type-group">其他光源</div>
+                <div class="light-buttons">
+                    <button class="light-btn" data-light="white" data-name="白光">
+                        <span class="light-name">白光</span>
+                        <span class="light-desc">连续光谱</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 单色光波长控制 -->
+            <div class="control-group" id="wavelengthControl" style="display: none;">
+                <label>单色光波长 (nm): 
+                    <span id="wavelengthValue" class="value-display">546.1</span>
+                </label>
+                <input type="range" id="wavelength" min="400" max="700" value="546" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>光栅常数 (线/mm): 
+                    <span id="gratingValue" class="value-display">600</span>
+                </label>
+                <input type="range" id="gratingConstant" min="100" max="1200" value="600">
+            </div>
+
+            <!-- 望远镜角度控制（联动叉丝） -->
+            <div class="control-group">
+                <label>望远镜角度调节：</label>
+                <input type="range" id="telescopeAngle" min="-60" max="60" value="0" step="0.1">
+                
+                <!-- 游标读数显示 -->
+                <div class="vernier-display">
+                    <div class="vernier">
+                        左游标: <span id="leftVernierDisplay">0°00′</span>
+                    </div>
+                    <div class="vernier">
+                        右游标: <span id="rightVernierDisplay">0°00′</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.75rem; color: #666; margin-top: 4px;">
+                    调节角度时，十字叉丝与望远镜同步移动，对准谱线后自动重合高亮
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="recordBtn">记录当前游标读数</button>
+                <button id="resetBtn">重置实验</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 光源波长数据
+        const lightSources = {
+            mercury: {
+                type: 'multi',
+                name: '汞灯',
+                components: [
+                    { wavelength: 404.7, color: 'violet', name: '紫' },
+                    { wavelength: 435.8, color: 'blue', name: '蓝' },
+                    { wavelength: 546.1, color: 'lime', name: '绿' },
+                    { wavelength: 577.0, color: 'yellow', name: '黄1' },
+                    { wavelength: 579.0, color: 'yellow', name: '黄2' }
+                ]
+            },
+            sodium: {
+                type: 'mono',
+                name: '钠灯',
+                components: [
+                    { wavelength: 589.0, color: 'orange', name: '钠黄1' },
+                    { wavelength: 589.6, color: 'orange', name: '钠黄2' }
+                ]
+            },
+            mono: {
+                type: 'mono',
+                name: '单色光',
+                components: [
+                    { wavelength: 546.1, color: 'lime', name: '单色光' }
+                ]
+            },
+            white: {
+                type: 'multi',
+                name: '白光',
+                components: [
+                    { wavelength: 430, color: 'blue', name: '蓝' },
+                    { wavelength: 490, color: 'cyan', name: '青' },
+                    { wavelength: 550, color: 'green', name: '绿' },
+                    { wavelength: 580, color: 'yellow', name: '黄' },
+                    { wavelength: 610, color: 'orange', name: '橙' },
+                    { wavelength: 650, color: 'red', name: '红' }
+                ]
+            }
+        };
+
+        let currentLight = 'mercury';
+        let animationFrameId = null;
+        let experimentStep = 0; // 0:未开始, 1:已记录数据, 2:已计算衍射角, 3:已计算波长
+
+        // DOM元素
+        const wavelengthSlider = document.getElementById('wavelength');
+        const wavelengthValue = document.getElementById('wavelengthValue');
+        const gratingSlider = document.getElementById('gratingConstant');
+        const gratingValue = document.getElementById('gratingValue');
+        const telescopeSlider = document.getElementById('telescopeAngle');
+        const crosshair = document.getElementById('crosshair');
+        const scaleGroup = document.getElementById('scaleGroup');
+        const spectrum = document.getElementById('spectrum');
+        const recordBtn = document.getElementById('recordBtn');
+        const calcDiffractionBtn = document.getElementById('calcDiffractionBtn');
+        const calcWavelengthBtn = document.getElementById('calcWavelengthBtn');
+        const errorBtn = document.getElementById('errorBtn');
+        const uncertaintyBtn = document.getElementById('uncertaintyBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dataTable = document.getElementById('dataTable');
+        const result = document.getElementById('result');
+        const wavelengthControl = document.getElementById('wavelengthControl');
+        const lightButtons = document.querySelectorAll('.light-btn');
+        const leftVernierDisplay = document.getElementById('leftVernierDisplay');
+        const rightVernierDisplay = document.getElementById('rightVernierDisplay');
+        const leftVernier = document.getElementById('leftVernier');
+        const rightVernier = document.getElementById('rightVernier');
+
+        // 实验数据
+        let experimentData = {};
+
+        // 初始化刻度盘（生成刻度标记）
+        function initScale() {
+            const scale = document.getElementById('scale');
+            for (let i = 0; i < 360; i += 1) {
+                const mark = document.createElement('div');
+                mark.className = 'scale-mark';
+                mark.style.transform = `rotate(${i}deg) translateY(-50%)`;
+                // 每10°刻度加粗
+                if (i % 10 === 0) {
+                    mark.style.height = '4px';
+                    mark.style.width = '14px';
+                }
+                scale.appendChild(mark);
+            }
+        }
+
+        // 光源选择
+        lightButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                lightButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentLight = this.dataset.light;
+                wavelengthControl.style.display = lightSources[currentLight].type === 'mono' && currentLight !== 'sodium' ? 'block' : 'none';
+                updateSpectrum();
+            });
+        });
+
+        // 单色光波长调节
+        wavelengthSlider.addEventListener('input', function() {
+            const val = this.value;
+            wavelengthValue.textContent = parseFloat(val).toFixed(1);
+            lightSources.mono.components[0].wavelength = parseFloat(val);
+            
+            // 更新单色光颜色
+            const wavelength = parseFloat(val);
+            let color;
+            if (wavelength < 450) color = 'violet';
+            else if (wavelength < 495) color = 'blue';
+            else if (wavelength < 570) color = 'green';
+            else if (wavelength < 590) color = 'yellow';
+            else if (wavelength < 620) color = 'orange';
+            else color = 'red';
+            
+            lightSources.mono.components[0].color = color;
+            updateSpectrum();
+        });
+
+        // 光栅常数调节
+        gratingSlider.addEventListener('input', function() {
+            const val = this.value;
+            gratingValue.textContent = val;
+            updateSpectrum();
+        });
+
+        // 将角度转换为度分格式
+        function angleToDegreesMinutes(angle) {
+            // 确保角度在0-360度之间
+            let normalizedAngle = angle;
+            while (normalizedAngle < 0) normalizedAngle += 360;
+            while (normalizedAngle >= 360) normalizedAngle -= 360;
+            
+            const degrees = Math.floor(normalizedAngle);
+            const minutes = Math.round((normalizedAngle - degrees) * 60);
+            return `${degrees}°${minutes.toString().padStart(2, '0')}′`;
+        }
+
+        // 计算左右游标读数
+        function calculateVernierReadings(telescopeAngle) {
+            // 左游标读数直接等于望远镜角度，转换为0-360度
+            let leftReading = telescopeAngle;
+            while (leftReading < 0) leftReading += 360;
+            while (leftReading >= 360) leftReading -= 360;
+            
+            // 右游标读数 = 左游标读数 + 180°，然后归一化到0-360°
+            let rightReading = leftReading + 180;
+            if (rightReading >= 360) rightReading -= 360;
+            
+            return {
+                left: leftReading,
+                right: rightReading
+            };
+        }
+
+        // 望远镜角度调节（优化性能）
+        function updateTelescopePosition() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            animationFrameId = requestAnimationFrame(() => {
+                const angleDeg = parseFloat(telescopeSlider.value);
+                
+                // 计算左右游标读数
+                const vernierReadings = calculateVernierReadings(angleDeg);
+                
+                // 更新游标显示
+                leftVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.left);
+                rightVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.right);
+                leftVernier.textContent = angleToDegreesMinutes(vernierReadings.left);
+                rightVernier.textContent = angleToDegreesMinutes(vernierReadings.right);
+                
+                // 绕中心旋转刻度盘（含望远镜），保持沿半径线
+                scaleGroup.style.transform = `rotate(${angleDeg}deg)`;
+                
+                // 同步移动光谱区十字叉丝
+                const crosshairPos = 50 + (angleDeg / 60) * 40;
+                crosshair.style.left = `${crosshairPos}%`;
+                
+                // 检查谱线对准
+                checkAndAlignSpectrum(angleDeg);
+                
+                animationFrameId = null;
+            });
+        }
+
+        // 使用事件监听器（优化性能）
+        telescopeSlider.addEventListener('input', updateTelescopePosition);
+        telescopeSlider.addEventListener('change', updateTelescopePosition);
+
+        // 检查并强制谱线与叉丝重合
+        function checkAndAlignSpectrum(currentAngle) {
+            const lines = document.querySelectorAll('.spectrum-line');
+            lines.forEach(line => line.classList.remove('active'));
+            
+            let targetLine = null;
+            let minDiff = Infinity;
+            
+            lines.forEach(line => {
+                const lineAngle = parseFloat(line.dataset.angle);
+                const diff = Math.abs(currentAngle - lineAngle);
+                
+                // 误差范围<0.2°视为对准，强制谱线位置与叉丝重合
+                if (diff < minDiff && diff < 0.2) {
+                    minDiff = diff;
+                    targetLine = line;
+                }
+            });
+            
+            if (targetLine) {
+                // 强制谱线位置与叉丝位置一致（确保视觉重合）
+                const crosshairPos = 50 + (currentAngle / 60) * 40;
+                targetLine.style.left = `${crosshairPos}%`;
+                targetLine.classList.add('active');
+                
+                // 微调望远镜角度，使其精确对准谱线
+                const preciseAngle = parseFloat(targetLine.dataset.angle);
+                telescopeSlider.value = preciseAngle;
+                
+                // 更新游标显示
+                const vernierReadings = calculateVernierReadings(preciseAngle);
+                leftVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.left);
+                rightVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.right);
+                leftVernier.textContent = angleToDegreesMinutes(vernierReadings.left);
+                rightVernier.textContent = angleToDegreesMinutes(vernierReadings.right);
+                
+                scaleGroup.style.transform = `rotate(${preciseAngle}deg)`;
+            }
+        }
+
+        // 记录当前游标读数
+        recordBtn.addEventListener('click', function() {
+            const activeLine = document.querySelector('.spectrum-line.active');
+            if (!activeLine) {
+                alert("请调节望远镜角度，使十字叉丝与谱线重合（谱线会高亮）");
+                return;
+            }
+
+            const angleDeg = parseFloat(telescopeSlider.value);
+            const vernierReadings = calculateVernierReadings(angleDeg);
+            const wavelength = parseFloat(activeLine.dataset.wavelength);
+            const colorName = activeLine.dataset.colorname;
+            const color = activeLine.dataset.color;
+            const k = parseInt(activeLine.dataset.k);
+
+            // 检查是否已存在该谱线的行
+            let row = dataTable.querySelector(`tr[data-color="${colorName}"][data-k="${Math.abs(k)}"]`);
+            
+            if (!row) {
+                // 创建新行
+                row = document.createElement('tr');
+                row.dataset.color = colorName;
+                row.dataset.k = Math.abs(k);
+                row.dataset.wavelength = wavelength;
+                row.innerHTML = `
+                    <td style="color: ${color}">${colorName}</td>
+                    <td>k=${Math.abs(k)}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                `;
+                dataTable.appendChild(row);
+                
+                // 初始化数据存储
+                const key = `${colorName}_k${Math.abs(k)}`;
+                experimentData[key] = {
+                    wavelength: wavelength,
+                    positive: null,
+                    negative: null
+                };
+            }
+
+            // 更新数据存储和表格显示
+            const key = `${colorName}_k${Math.abs(k)}`;
+            if (k > 0) {
+                experimentData[key].positive = {
+                    k: k,
+                    left: vernierReadings.left,
+                    right: vernierReadings.right,
+                    angle: angleDeg
+                };
+                
+                row.cells[2].textContent = angleToDegreesMinutes(vernierReadings.left);
+                row.cells[3].textContent = angleToDegreesMinutes(vernierReadings.right);
+            } else {
+                experimentData[key].negative = {
+                    k: k,
+                    left: vernierReadings.left,
+                    right: vernierReadings.right,
+                    angle: angleDeg
+                };
+                
+                row.cells[4].textContent = angleToDegreesMinutes(vernierReadings.left);
+                row.cells[5].textContent = angleToDegreesMinutes(vernierReadings.right);
+            }
+            
+            // 更新实验步骤
+            experimentStep = 1;
+            calcDiffractionBtn.disabled = false;
+        });
+
+        // 计算衍射角
+        calcDiffractionBtn.addEventListener('click', function() {
+            if (Object.keys(experimentData).length === 0) {
+                result.textContent = "请先记录至少一组谱线的游标读数";
+                return;
+            }
+
+            let resultHtml = '<strong>衍射角计算结果：</strong><br><br>';
+            let hasCompleteData = false;
+
+            // 计算每个谱线的衍射角
+            Object.keys(experimentData).forEach(key => {
+                const data = experimentData[key];
+                
+                if (data.positive && data.negative) {
+                    // 计算衍射角：|正级次角度 - 负级次角度| / 2
+                    const diffractionAngle = Math.abs(data.positive.angle - data.negative.angle) / 2;
+                    data.diffractionAngle = diffractionAngle;
+                    data.sinTheta = Math.sin(diffractionAngle * Math.PI / 180);
+                    data.k = Math.abs(data.positive.k); // 使用正级次的k值
+                    
+                    const colorName = key.split('_')[0];
+                    
+                    resultHtml += `<div class="calculation-details">
+                        ${colorName}谱线(k=${data.k})衍射角计算：<br>
+                        θ = |θ<sub>+k</sub> - θ<sub>-k</sub>| / 2 = |${data.positive.angle.toFixed(2)}° - ${data.negative.angle.toFixed(2)}°| / 2 = ${diffractionAngle.toFixed(2)}°<br>
+                        sinθ = sin(${diffractionAngle.toFixed(2)}°) = ${data.sinTheta.toFixed(4)}
+                    </div>`;
+                    hasCompleteData = true;
+                } else {
+                    const colorName = key.split('_')[0];
+                    resultHtml += `${colorName}谱线：缺少正级次或负级次数据<br>`;
+                }
+            });
+
+            if (hasCompleteData) {
+                experimentStep = 2;
+                calcWavelengthBtn.disabled = false;
+                resultHtml += "<br>衍射角计算完成，现在可以计算波长。";
+            }
+            
+            result.innerHTML = resultHtml;
+        });
+
+        // 计算波长
+        calcWavelengthBtn.addEventListener('click', function() {
+            if (experimentStep < 2) {
+                result.textContent = "请先计算衍射角";
+                return;
+            }
+
+            const currentGrating = parseInt(gratingSlider.value);
+            const d = 1 / (currentGrating * 1000); // 光栅常数，单位：米
+
+            let resultHtml = '<strong>波长计算结果：</strong><br><br>';
+            let hasData = false;
+
+            // 计算每个谱线的波长
+            Object.keys(experimentData).forEach(key => {
+                const data = experimentData[key];
+                
+                if (data.diffractionAngle) {
+                    // 使用光栅方程计算波长：λ = d·sinθ / k
+                    const calcLambda = (d * data.sinTheta / data.k * 1e9).toFixed(1);
+                    data.calculatedWavelength = parseFloat(calcLambda);
+                    
+                    const colorName = key.split('_')[0];
+                    
+                    resultHtml += `<div class="calculation-details">
+                        ${colorName}谱线(k=${data.k})波长计算：<br>
+                        光栅方程：d·sinθ = k·λ<br>
+                        λ = d·sinθ / k = (1/${currentGrating} mm) · sin(${data.diffractionAngle.toFixed(2)}°) / ${data.k}<br>
+                        d = 1/${currentGrating} mm = ${(d*1000).toFixed(6)} μm = ${(d*1e6).toFixed(3)} nm<br>
+                        λ = (${(d*1e6).toFixed(3)} nm) · ${data.sinTheta.toFixed(4)} / ${data.k} = ${calcLambda} nm
+                    </div>`;
+                    hasData = true;
+                }
+            });
+
+            if (hasData) {
+                experimentStep = 3;
+                errorBtn.disabled = false;
+                uncertaintyBtn.disabled = false;
+                resultHtml += "<br>波长计算完成，现在可以进行误差分析和不确定度分析。";
+            }
+            
+            result.innerHTML = resultHtml;
+        });
+
+        // 误差分析
+        errorBtn.addEventListener('click', function() {
+            if (experimentStep < 3) {
+                result.textContent = "请先完成波长计算";
+                return;
+            }
+
+            let resultHtml = '<strong>误差分析结果：</strong><br><br>';
+            
+            Object.keys(experimentData).forEach(key => {
+                const data = experimentData[key];
+                
+                if (data.calculatedWavelength) {
+                    const actual = data.wavelength;
+                    const calc = data.calculatedWavelength;
+                    const error = Math.abs(calc - actual).toFixed(1);
+                    const errorRate = ((Math.abs(calc - actual) / actual) * 100).toFixed(1);
+                    
+                    const colorName = key.split('_')[0];
+                    
+                    resultHtml += `<div class="calculation-details">
+                        ${colorName}谱线误差分析：<br>
+                        计算值 λ<sub>计算</sub> = ${calc} nm<br>
+                        实际值 λ<sub>实际</sub> = ${actual} nm<br>
+                        绝对误差 Δλ = |λ<sub>计算</sub> - λ<sub>实际</sub>| = |${calc} - ${actual}| = ${error} nm<br>
+                        相对误差 δ = (Δλ / λ<sub>实际</sub>) × 100% = (${error} / ${actual}) × 100% = ${errorRate}%
+                    </div>`;
+                }
+            });
+
+            result.innerHTML = resultHtml;
+        });
+
+        // 不确定度分析
+        uncertaintyBtn.addEventListener('click', function() {
+            if (experimentStep < 3) {
+                result.textContent = "请先完成波长计算";
+                return;
+            }
+
+            let resultHtml = '<strong>不确定度分析结果：</strong><br><br>';
+            
+            // 计算所有波长的平均值和标准差
+            const wavelengths = [];
+            Object.keys(experimentData).forEach(key => {
+                const data = experimentData[key];
+                if (data.calculatedWavelength) {
+                    wavelengths.push(data.calculatedWavelength);
+                }
+            });
+
+            if (wavelengths.length > 0) {
+                const avg = wavelengths.reduce((sum, val) => sum + val, 0) / wavelengths.length;
+                
+                // 计算A类不确定度（标准差）
+                const variance = wavelengths.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / (wavelengths.length - 1);
+                const stdDev = Math.sqrt(variance);
+                
+                // 计算B类不确定度（角度测量误差±0.1°）
+                const angleError = 0.1 * Math.PI / 180; // 弧度
+                const currentGrating = parseInt(gratingSlider.value);
+                const d = 1 / (currentGrating * 1000);
+                const bUncertainty = d * Math.cos(avg) * angleError * 1e9;
+                
+                // 合成不确定度
+                const combinedUncertainty = Math.sqrt(Math.pow(stdDev, 2) + Math.pow(bUncertainty, 2));
+                
+                resultHtml += `<div class="calculation-details">
+                    不确定度分析：<br>
+                    平均波长 λ̄ = ${avg.toFixed(1)} nm<br>
+                    A类不确定度（标准差） u<sub>A</sub> = ${stdDev.toFixed(2)} nm<br>
+                    B类不确定度（角度误差） u<sub>B</sub> = d·cos(λ̄)·Δθ = ${(d*1e6).toFixed(3)} nm · cos(${avg.toFixed(1)} nm) · (0.1°) = ${bUncertainty.toFixed(2)} nm<br>
+                    合成不确定度 u<sub>C</sub> = √(u<sub>A</sub><sup>2</sup> + u<sub>B</sub><sup>2</sup>) = √[(${stdDev.toFixed(2)})<sup>2</sup> + (${bUncertainty.toFixed(2)})<sup>2</sup>] = ${combinedUncertainty.toFixed(2)} nm
+                </div>`;
+            } else {
+                resultHtml += "数据不足，无法进行不确定度分析";
+            }
+
+            result.innerHTML = resultHtml;
+        });
+
+        // 重置实验
+        resetBtn.addEventListener('click', function() {
+            experimentData = {};
+            experimentStep = 0;
+            dataTable.innerHTML = '';
+            result.textContent = "数据处理结果将显示在这里";
+
+            calcDiffractionBtn.disabled = true;
+            calcWavelengthBtn.disabled = true;
+            errorBtn.disabled = true;
+            uncertaintyBtn.disabled = true;
+
+            currentLight = 'mercury';
+            lightButtons.forEach(b => b.classList.remove('active'));
+            document.querySelector(`.light-btn[data-light="mercury"]`).classList.add('active');
+            
+            wavelengthSlider.value = 546;
+            wavelengthValue.textContent = "546.1";
+            lightSources.mono.components[0].wavelength = 546.1;
+            lightSources.mono.components[0].color = 'lime';
+            
+            gratingSlider.value = 600;
+            gratingValue.textContent = 600;
+            
+            telescopeSlider.value = 0;
+            const vernierReadings = calculateVernierReadings(0);
+            leftVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.left);
+            rightVernierDisplay.textContent = angleToDegreesMinutes(vernierReadings.right);
+            leftVernier.textContent = angleToDegreesMinutes(vernierReadings.left);
+            rightVernier.textContent = angleToDegreesMinutes(vernierReadings.right);
+            scaleGroup.style.transform = `rotate(0deg)`;
+            crosshair.style.left = "50%";
+            
+            wavelengthControl.style.display = 'none';
+            updateSpectrum();
+        });
+
+        // 更新光谱
+        function updateSpectrum() {
+            // 清除所有谱线，但保留十字叉丝
+            const spectrumLines = document.querySelectorAll('.spectrum-line');
+            spectrumLines.forEach(line => line.remove());
+
+            // 更新十字叉丝位置
+            const crosshairPos = 50 + (parseFloat(telescopeSlider.value) / 60) * 40;
+            crosshair.style.left = `${crosshairPos}%`;
+
+            const grating = parseInt(gratingSlider.value);
+            const d = 1 / (grating * 1000);
+            const lightComponents = lightSources[currentLight].components;
+            
+            lightComponents.forEach(component => {
+                generateSpectrumLines(
+                    component.wavelength,
+                    component.color,
+                    component.name,
+                    component.color,
+                    d
+                );
+            });
+
+            checkAndAlignSpectrum(parseFloat(telescopeSlider.value));
+        }
+
+        // 生成光谱线
+        function generateSpectrumLines(wavelength, color, colorName, cssColor, d) {
+            const maxK = Math.floor(d / (wavelength * 1e-9));
+
+            for (let k = -maxK; k <= maxK; k++) {
+                if (k === 0) continue;
+
+                // 计算衍射角度（弧度转角度）
+                const thetaRad = Math.asin(k * wavelength * 1e-9 / d);
+                const thetaDeg = thetaRad * 180 / Math.PI;
+                if (Math.abs(thetaDeg) > 58) continue; // 限制可见范围
+
+                const line = document.createElement('div');
+                line.className = 'spectrum-line';
+                line.dataset.k = k;
+                line.dataset.wavelength = wavelength;
+                line.dataset.color = color;
+                line.dataset.colorname = colorName;
+                line.dataset.angle = thetaDeg; // 存储衍射角度（角度值）
+                line.style.backgroundColor = cssColor;
+                line.style.color = cssColor;
+
+                // 统一位置映射：thetaDeg → 光谱位置
+                const position = 50 + (thetaDeg / 60) * 40;
+                line.style.left = `${position}%`;
+
+                const label = document.createElement('div');
+                label.className = 'spectrum-label';
+                label.textContent = `k=${k}`;
+                line.appendChild(label);
+
+                spectrum.appendChild(line);
+            }
+        }
+
+        // 初始化装置
+        initScale(); // 生成刻度
+        updateTelescopePosition(); // 初始化游标显示
+        updateSpectrum(); // 初始化光谱显示
+    </script>
+</body>
+</html>

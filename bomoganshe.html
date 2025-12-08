@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>薄膜干涉模拟</title>
+    <style>
+        /* 浅蓝色系色彩方案 */
+        :root {
+            --primary-blue: #e3f2fd;
+            --secondary-blue: #bbdefb;
+            --accent-blue: #2196f3;
+            --dark-blue: #1565c0;
+            --light-blue: #f3f8ff;
+            --text-primary: #2c3e50;
+            --text-secondary: #546e7a;
+            --border-color: #90caf9;
+            --shadow-color: rgba(33, 150, 243, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', '微软雅黑', 'Times New Roman', serif;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        /* 统一英文字体为Times New Roman */
+        .formula, formula-section p, .data-item, .parameter-group label, .data-panel h3 {
+            font-family: 'Times New Roman', serif;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--dark-blue);
+            font-size: 2em;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 4px var(--shadow-color);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-panel {
+            flex: 1;
+            background: linear-gradient(145deg, #ffffff, var(--light-blue));
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .visualization-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .diagram-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+        }
+
+        .visualization {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            position: relative;
+            flex: 1;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .parameter-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .parameter-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--shadow-color);
+        }
+
+        .parameter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--secondary-blue);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        input[type="range"]:hover {
+            background: var(--accent-blue);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: var(--dark-blue);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            background: var(--dark-blue);
+        }
+
+        .value-display {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            color: var(--dark-blue);
+            font-size: 0.9em;
+        }
+
+        .data-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            min-width: 220px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .data-panel h3 {
+            margin: 0 0 10px 0;
+            color: var(--dark-blue);
+            font-size: 1.1em;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+        }
+
+        .data-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .data-value {
+            font-weight: bold;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .data-value.updated {
+            animation: valueUpdate 0.3s ease-in-out;
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes valueUpdate {
+            0% {
+                transform: scale(1);
+                color: var(--text-primary);
+            }
+            50% {
+                transform: scale(1.05);
+                color: var(--accent-blue);
+            }
+            100% {
+                transform: scale(1);
+                color: var(--text-primary);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 20px;
+                gap: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+                margin-bottom: 20px;
+            }
+
+            .data-panel {
+                position: static;
+                margin-top: 20px;
+                width: 100%;
+                animation: slideInRight 0.5s ease-in-out;
+            }
+
+            .canvas-container {
+                height: 250px;
+            }
+
+            .parameter-group {
+                margin-bottom: 20px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 style="display: flex; justify-content: space-between; align-items: center;">
+        薄膜干涉现象仿真
+        <span style="font-size: 1em; font-weight: normal;">作者：xatu_bai</span>
+    </h1>
+    <div class="container">
+        <div class="control-panel">
+            <div class="parameter-group">
+                <label for="n1-slider">介质1折射率 (n₁)</label>
+                <div class="slider-container">
+                    <input type="range" id="n1-slider" min="1.0" max="2.0" step="0.1" value="1.0">
+                    <span class="value-display" id="n1-value">1.00</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label for="n2-slider">薄膜折射率 (n₂)</label>
+                <div class="slider-container">
+                    <input type="range" id="n2-slider" min="1.0" max="2.0" step="0.1" value="1.5">
+                    <span class="value-display" id="n2-value">1.50</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label for="n3-slider">介质3折射率 (n₃)</label>
+                <div class="slider-container">
+                    <input type="range" id="n3-slider" min="1.0" max="2.0" step="0.1" value="1.0">
+                    <span class="value-display" id="n3-value">1.00</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label for="wavelength-slider">光波长 (λ)</label>
+                <div class="slider-container">
+                    <input type="range" id="wavelength-slider" min="380" max="780" step="10" value="550">
+                    <span class="value-display" id="wavelength-value">550</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label for="thickness-slider">薄膜厚度 (d)</label>
+                <div class="slider-container">
+                    <input type="range" id="thickness-slider" min="100" max="1000" step="0.1" value="200">
+                    <span class="value-display" id="thickness-value">200.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization-panel">
+            <div class="diagram-container">
+                <canvas id="mediumDiagram" width="500" height="200"></canvas>
+            </div>
+            
+            <div class="visualization">
+                <div class="canvas-container">
+                    <canvas id="interferenceCanvas"></canvas>
+                </div>
+                
+                <!-- 实时数据显示面板 -->
+                <div class="data-panel">
+                    <h3>实时数据</h3>
+                    <div class="data-item">
+                        <span class="data-label">光程差:</span>
+                        <span class="data-value" id="opticalPathDiff">600.00 nm</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">干涉级数:</span>
+                        <span class="data-value" id="interferenceOrder">1.09</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">条纹状态:</span>
+                        <span class="data-value" id="fringeStatus">中间状态</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const canvas = document.getElementById('interferenceCanvas');
+        const ctx = canvas.getContext('2d');
+        const n1Slider = document.getElementById('n1-slider');
+        const n2Slider = document.getElementById('n2-slider');
+        const n3Slider = document.getElementById('n3-slider');
+        const wavelengthSlider = document.getElementById('wavelength-slider');
+        const thicknessSlider = document.getElementById('thickness-slider');
+        const n1Value = document.getElementById('n1-value');
+        const n2Value = document.getElementById('n2-value');
+        const n3Value = document.getElementById('n3-value');
+        const wavelengthValue = document.getElementById('wavelength-value');
+        const thicknessValue = document.getElementById('thickness-value');
+        
+        // 设置canvas尺寸
+        function setCanvasDimensions() {
+            const container = canvas.parentElement;
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+        }
+        
+        // 初始化canvas尺寸
+        setCanvasDimensions();
+        window.addEventListener('resize', setCanvasDimensions);
+        
+        // 初始化参数值
+        let n1 = parseFloat(n1Slider.value);
+        let n2 = parseFloat(n2Slider.value);
+        let n3 = parseFloat(n3Slider.value);
+        let wavelength = parseInt(wavelengthSlider.value);
+        let thickness = parseInt(thicknessSlider.value);
+        
+        // 更新显示值的函数
+        function updateDisplayValues() {
+            n1Value.textContent = n1.toFixed(2);
+            n2Value.textContent = n2.toFixed(2);
+            n3Value.textContent = n3.toFixed(2);
+            wavelengthValue.textContent = wavelength;
+            thicknessValue.textContent = thickness.toFixed(1); // 显示一位小数
+        }
+        
+        // 更新光程差理论公式和推导过程
+        function updateOpticalPathFormula(n2, thickness, wavelength, hasHalfWaveLoss) {
+            // 创建公式和推导过程的HTML内容
+            let formulaHtml = `
+                <div class="formula-section">
+                    <h4>光程差理论公式</h4>
+                    <p>对于垂直入射（θ = 0）的薄膜干涉，光程差计算公式为：</p>
+                    <div class="formula">Δ = 2n₂d</div>
+                    <p>其中：n₂ = ${n2}（薄膜折射率），d = ${thickness} nm（薄膜厚度）</p>
+                    
+                    <h4>半波损失修正</h4>
+            `;
+            
+            if (hasHalfWaveLoss) {
+                formulaHtml += `
+                    <p>当折射率分布非单调时，额外引入半波损失：</p>
+                    <div class="formula">Δ = 2n₂d + λ/2</div>
+                    <p>其中：λ = ${wavelength} nm（入射光波长）</p>
+                    <p class="derivation">推导：两束反射光中一束在光疏到光密界面反射，另一束在光密到光疏界面反射，相位差额外增加π。</p>
+                `;
+            } else {
+                formulaHtml += `
+                    <p>当折射率分布单调时，无需额外半波损失修正。</p>
+                    <p class="derivation">推导：两束反射光都在同类型界面反射（都是光疏到光密或都是光密到光疏），没有额外相位差。</p>
+                `;
+            }
+            
+            formulaHtml += `
+                    <h4>相位差计算</h4>
+                    <p>相位差与光程差的关系：</p>
+                    <div class="formula">Δφ = (2π/λ) × Δ</div>
+                </div>
+            `;
+            
+            // 更新DOM
+            const formulaContainer = document.getElementById('formulaContainer');
+            if (formulaContainer) {
+                formulaContainer.innerHTML = formulaHtml;
+            }
+        }
+        
+        // 数据更新动画
+        function animateDataUpdate(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('updated');
+                setTimeout(() => {
+                    element.classList.remove('updated');
+                }, 300);
+            }
+        }
+        
+        // 薄膜干涉核心计算函数
+        function calculateInterference() {
+            // 检查相邻介质的折射率是否相同
+            if (n1 === n2 || n2 === n3) {
+                // 更新实时数据显示
+                document.getElementById('opticalPathDiff').textContent = "∞ (无干涉)";
+                document.getElementById('phaseDiff').textContent = "-";
+                document.getElementById('interferenceOrder').textContent = "/"; // 干涉级别以'/'表示
+                document.getElementById('fringeStatus').textContent = "/"; // 条纹状态以'/'表示
+                
+                // 此时应呈现常亮状态，返回大于1的值确保足够亮
+                return 1.0; // 返回最大强度值
+            }
+            
+            // 对于均匀厚度薄膜，整个表面应该显示相同的干涉效果
+            // 垂直入射情形
+            const theta = 0; // 垂直入射角
+            const thetaT = 0; // 垂直入射时折射角也为0
+            
+            // 计算光程差（仅针对垂直入射情形）
+            let opticalPathDifference = 2 * n2 * thickness; // cos(0) = 1
+            
+            // 根据折射率单调性调整半波损失计算规则
+            let isMonotonic = (n1 <= n2 && n2 <= n3) || (n1 >= n2 && n2 >= n3);
+            let hasHalfWaveLoss = !isMonotonic;
+            
+            if (hasHalfWaveLoss) {
+                // 非单调情况下增加半波损失项
+                opticalPathDifference += wavelength / 2;
+            }
+            
+            // 更新理论公式和推导过程
+            updateOpticalPathFormula(n2, thickness, wavelength, hasHalfWaveLoss);
+            
+            // 计算相位差
+            const phaseDifference = (2 * Math.PI / wavelength) * opticalPathDifference;
+            
+            // 直接使用薄膜干涉的基本公式计算干涉级数
+            // 确保对于每个整数m，都有对应的m级亮纹和m级暗纹
+            let interferenceOrder;
+            let fringeStatus;
+            const tolerance = 0.01;
+            
+            // 计算参数：2n2d/λ
+            const twoNdOverLambda = (2 * n2 * thickness) / wavelength;
+            
+            // 计算最接近的整数m（向下取整）
+            const m = Math.floor(twoNdOverLambda);
+            
+            // 计算距离下一个整数和半整数的距离
+            const distanceToInteger = twoNdOverLambda - m;
+            
+            // 判断条纹状态和级数
+            if (hasHalfWaveLoss) {
+                // 有半波损失时的干涉条件：
+                // - 亮纹出现在 2n2d = (m + 0.5)λ 附近
+                // - 暗纹出现在 2n2d = mλ 或 (m + 1)λ 附近
+                
+                if (Math.abs(distanceToInteger) < tolerance || Math.abs(distanceToInteger - 1) < tolerance) {
+                    // 接近整数倍，为暗纹
+                    fringeStatus = "暗条纹";
+                    interferenceOrder = Math.round(twoNdOverLambda);
+                } else if (Math.abs(distanceToInteger - 0.5) < tolerance) {
+                    // 接近半整数倍，为亮纹
+                    fringeStatus = "明条纹";
+                    interferenceOrder = m + 1; // 使用m+1作为级数
+                } else {
+                    // 中间状态
+                    fringeStatus = "中间状态";
+                    interferenceOrder = m + 1; // 使用最近的整数+1作为级数
+                }
+            } else {
+                // 无半波损失时的干涉条件：
+                // - 亮纹出现在 2n2d = mλ 或 (m + 1)λ 附近
+                // - 暗纹出现在 2n2d = (m + 0.5)λ 附近
+                
+                if (Math.abs(distanceToInteger) < tolerance || Math.abs(distanceToInteger - 1) < tolerance) {
+                    // 接近整数倍，为亮纹
+                    fringeStatus = "明条纹";
+                    interferenceOrder = Math.round(twoNdOverLambda);
+                } else if (Math.abs(distanceToInteger - 0.5) < tolerance) {
+                    // 接近半整数倍，为暗纹
+                    fringeStatus = "暗条纹";
+                    interferenceOrder = m + 1; // 使用m+1作为级数
+                } else {
+                    // 中间状态
+                    fringeStatus = "中间状态";
+                    interferenceOrder = m + 1; // 使用最近的整数+1作为级数
+                }
+            }
+            
+            // 确保级数至少为1
+            if (interferenceOrder < 1) {
+                interferenceOrder = 1;
+            }
+            
+            // 更新干涉强度计算（确保显示与条纹状态一致）
+            let intensity;
+            if (fringeStatus === "明条纹") {
+                intensity = 1.0;
+            } else if (fringeStatus === "暗条纹") {
+                intensity = 0.1; // 非完全黑色，便于观察
+            } else {
+                // 中间状态使用余弦平方计算
+                intensity = Math.pow(Math.cos(phaseDifference / 2), 2);
+            }
+            
+            // 更新实时数据显示面板
+            // 光程差显示计算公式
+            const opticalPathFormula = hasHalfWaveLoss ? "2n₂d + λ/2" : "2n₂d";
+            document.getElementById('opticalPathDiff').textContent = `(${opticalPathFormula}) = ${opticalPathDifference.toFixed(2)} nm`;
+            
+            // 中间状态时干涉级别显示为"/"
+            if (fringeStatus === "中间状态") {
+                document.getElementById('interferenceOrder').textContent = "/";
+            } else {
+                document.getElementById('interferenceOrder').textContent = interferenceOrder;
+            }
+            document.getElementById('fringeStatus').textContent = fringeStatus;
+            
+            // 添加数据更新动画
+            animateDataUpdate('opticalPathDiff');
+            animateDataUpdate('interferenceOrder');
+            animateDataUpdate('fringeStatus');
+            
+            return intensity;
+        }
+        
+        // 根据波长获取颜色
+        function wavelengthToColor(lambda) {
+            // 简化的可见光波长到RGB转换
+            let r, g, b;
+            
+            if (lambda >= 380 && lambda < 440) {
+                r = -(lambda - 440) / (440 - 380);
+                g = 0;
+                b = 1;
+            } else if (lambda >= 440 && lambda < 490) {
+                r = 0;
+                g = (lambda - 440) / (490 - 440);
+                b = 1;
+            } else if (lambda >= 490 && lambda < 510) {
+                r = 0;
+                g = 1;
+                b = -(lambda - 510) / (510 - 490);
+            } else if (lambda >= 510 && lambda < 580) {
+                r = (lambda - 510) / (580 - 510);
+                g = 1;
+                b = 0;
+            } else if (lambda >= 580 && lambda < 645) {
+                r = 1;
+                g = -(lambda - 645) / (645 - 580);
+                b = 0;
+            } else if (lambda >= 645 && lambda <= 780) {
+                r = 1;
+                g = 0;
+                b = 0;
+            } else {
+                r = 0;
+                g = 0;
+                b = 0;
+            }
+            
+            // 调整伽马校正和亮度
+            let factor;
+            if (lambda >= 380 && lambda < 420) {
+                factor = 0.3 + 0.7 * (lambda - 380) / (420 - 380);
+            } else if (lambda >= 420 && lambda < 700) {
+                factor = 1.0;
+            } else if (lambda >= 700 && lambda <= 780) {
+                factor = 0.3 + 0.7 * (780 - lambda) / (780 - 700);
+            } else {
+                factor = 0.0;
+            }
+            
+            r = Math.round(255 * r * factor);
+            g = Math.round(255 * g * factor);
+            b = Math.round(255 * b * factor);
+            
+            return {r, g, b};
+        }
+        
+        // 绘制干涉图案
+        function drawInterferencePattern() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // 创建图像数据
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            // 计算整个薄膜的干涉强度
+            const intensity = calculateInterference();
+            
+            // 获取当前光的RGB颜色
+            const lightColor = wavelengthToColor(wavelength);
+            
+            // 为所有像素设置相同的颜色和强度
+            for (let i = 0; i < data.length; i += 4) {
+                // 检查是否为无干涉状态（通过条纹状态文本判断）
+                const fringeStatus = document.getElementById('fringeStatus').textContent;
+                if (fringeStatus === '/') {
+                    // 无干涉时，直接使用最大亮度（不受强度计算影响）
+                    data[i] = lightColor.r * 255;     // R - 最大亮度 (乘以255转换为Canvas需要的0-255范围)
+                    data[i + 1] = lightColor.g * 255; // G - 最大亮度 (乘以255转换为Canvas需要的0-255范围)
+                    data[i + 2] = lightColor.b * 255; // B - 最大亮度 (乘以255转换为Canvas需要的0-255范围)
+                } else {
+                    // 正常干涉情况，使用计算的强度
+                    data[i] = lightColor.r * intensity;     // R
+                    data[i + 1] = lightColor.g * intensity; // G
+                    data[i + 2] = lightColor.b * intensity; // B
+                }
+                data[i + 3] = 255; // Alpha - 不透明
+            }
+            
+            // 将图像数据绘制到画布上
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // 绘制箭头头部
+        function drawArrowhead(ctx, x1, y1, x2, y2) {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(
+                x2 - 10 * Math.cos(angle - Math.PI / 6),
+                y2 - 10 * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                x2 - 10 * Math.cos(angle + Math.PI / 6),
+                y2 - 10 * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // 绘制介质结构示意图
+        function drawMediumDiagram() {
+            const diagramCanvas = document.getElementById('mediumDiagram');
+            const diagramCtx = diagramCanvas.getContext('2d');
+            const width = diagramCanvas.width;
+            const height = diagramCanvas.height;
+            
+            // 清除画布
+            diagramCtx.clearRect(0, 0, width, height);
+            
+            // 设置字体样式 - 优化显示效果
+            diagramCtx.font = 'bold 14px "Times New Roman", serif';
+            diagramCtx.textAlign = 'center';
+            diagramCtx.textBaseline = 'middle';
+            
+            // 启用图像平滑和抗锯齿
+            diagramCtx.imageSmoothingEnabled = true;
+            diagramCtx.imageSmoothingQuality = 'high';
+            diagramCtx.imageSmoothingQuality = 'high';
+            
+            // 优化薄膜厚度可视化 - 增加动态效果
+            const minThickness = 100;
+            const maxThickness = 1000;
+            
+            // 更敏感的厚度变化可视化，使薄膜高度变化更加明显
+            const minHeightRatio = 1/8; // 更薄的最小高度
+            const maxHeightRatio = 2/3; // 更厚的最大高度
+            
+            // 使用平方根比例，使小厚度变化也更明显
+            const normalizedThickness = Math.sqrt((thickness - minThickness) / (maxThickness - minThickness));
+            const filmHeightRatio = minHeightRatio + normalizedThickness * (maxHeightRatio - minHeightRatio);
+            
+            // 计算各层高度
+            const filmHeight = height * filmHeightRatio;
+            const remainingHeight = height - filmHeight;
+            const topHeight = remainingHeight / 2;
+            const bottomHeight = remainingHeight / 2;
+            
+            // 绘制三种介质
+            // 介质1 (上方)
+            diagramCtx.fillStyle = '#87CEEB'; // 天蓝色
+            diagramCtx.fillRect(0, 0, width, topHeight);
+            
+            // 添加现代化纹理效果，使用渐变和网格
+            const topGradient = diagramCtx.createLinearGradient(0, 0, width, 0);
+            topGradient.addColorStop(0, 'rgba(135, 206, 235, 0.8)');
+            topGradient.addColorStop(1, 'rgba(135, 206, 235, 0.5)');
+            diagramCtx.fillStyle = topGradient;
+            diagramCtx.fillRect(0, 0, width, topHeight);
+            
+            // 添加细线网格纹理
+            diagramCtx.strokeStyle = 'rgba(0, 102, 204, 0.2)';
+            diagramCtx.lineWidth = 0.5;
+            for (let i = 0; i <= width; i += 15) {
+                diagramCtx.beginPath();
+                diagramCtx.moveTo(i, 0);
+                diagramCtx.lineTo(i, topHeight);
+                diagramCtx.stroke();
+            }
+            for (let j = 0; j <= topHeight; j += 15) {
+                diagramCtx.beginPath();
+                diagramCtx.moveTo(0, j);
+                diagramCtx.lineTo(width, j);
+                diagramCtx.stroke();
+            }
+            
+            diagramCtx.fillStyle = 'black';
+            diagramCtx.fillText(`介质1 (n₁ = ${n1.toFixed(2)})`, width / 2, topHeight / 2);
+            
+            // 薄膜 (中间) - 动态显示厚度变化
+            // 使用现代化渐变背景增强厚度变化的视觉效果
+            const gradient = diagramCtx.createLinearGradient(0, topHeight, 0, topHeight + filmHeight);
+            gradient.addColorStop(0, '#98FB98'); // 浅绿色
+            gradient.addColorStop(0.5, '#32CD32'); // 绿色
+            gradient.addColorStop(1, '#98FB98'); // 浅绿色
+            
+            diagramCtx.fillStyle = gradient;
+            diagramCtx.fillRect(0, topHeight, width, filmHeight);
+            
+            // 添加现代化厚度指示线条和点阵纹理
+            const lineSpacing = 20;
+            diagramCtx.strokeStyle = 'rgba(0, 100, 0, 0.4)';
+            diagramCtx.lineWidth = 1;
+            for (let i = 0; i < filmHeight; i += lineSpacing) {
+                diagramCtx.beginPath();
+                diagramCtx.moveTo(10, topHeight + i);
+                diagramCtx.lineTo(width - 10, topHeight + i);
+                diagramCtx.stroke();
+            }
+            
+            // 添加点阵纹理
+            diagramCtx.fillStyle = 'rgba(0, 100, 0, 0.2)';
+            for (let i = 20; i < width; i += 20) {
+                for (let j = topHeight + 10; j < topHeight + filmHeight; j += 20) {
+                    diagramCtx.beginPath();
+                    diagramCtx.arc(i, j, 2, 0, 2 * Math.PI);
+                    diagramCtx.fill();
+                }
+            }
+            
+            // 添加厚度数值标签
+            diagramCtx.fillStyle = 'black';
+            diagramCtx.fillText(`薄膜 (n₂ = ${n2.toFixed(2)})`, width / 2, topHeight + 20);
+            diagramCtx.fillText(`厚度: ${thickness} nm`, width / 2, topHeight + filmHeight - 20);
+            
+            // 介质3 (下方)
+            // 使用现代化的渐变背景
+            const bottomGradient = diagramCtx.createLinearGradient(0, topHeight + filmHeight, 0, height);
+            bottomGradient.addColorStop(0, '#FFB6C1'); // 浅粉色
+            bottomGradient.addColorStop(1, '#FF9AA2'); // 稍深粉色
+            
+            diagramCtx.fillStyle = bottomGradient;
+            diagramCtx.fillRect(0, topHeight + filmHeight, width, bottomHeight);
+            
+            // 添加现代化的波浪纹理效果
+            diagramCtx.strokeStyle = 'rgba(255, 0, 51, 0.2)';
+            diagramCtx.lineWidth = 1;
+            for (let i = 0; i < 3; i++) {
+                diagramCtx.beginPath();
+                for (let x = 0; x < width; x += 5) {
+                    const y = topHeight + filmHeight + bottomHeight * 0.2 + i * 20 + Math.sin(x / 30) * 10;
+                    if (x === 0) {
+                        diagramCtx.moveTo(x, y);
+                    } else {
+                        diagramCtx.lineTo(x, y);
+                    }
+                }
+                diagramCtx.stroke();
+            }
+            
+            diagramCtx.fillStyle = 'black';
+            diagramCtx.fillText(`介质3 (n₃ = ${n3.toFixed(2)})`, width / 2, topHeight + filmHeight + bottomHeight / 2);
+            
+            // 绘制分隔线
+            diagramCtx.beginPath();
+            diagramCtx.moveTo(0, topHeight);
+            diagramCtx.lineTo(width, topHeight);
+            diagramCtx.moveTo(0, topHeight + filmHeight);
+            diagramCtx.lineTo(width, topHeight + filmHeight);
+            diagramCtx.strokeStyle = 'black';
+            diagramCtx.lineWidth = 2;
+            diagramCtx.stroke();
+            
+            // 只绘制一条入射到薄膜上表面的垂直光线
+            // 光线会随着薄膜厚度变化而上下移动
+            diagramCtx.beginPath();
+            diagramCtx.moveTo(width * 0.5, 20);
+            diagramCtx.lineTo(width * 0.5, topHeight); // 只画到薄膜上表面
+            diagramCtx.strokeStyle = 'red';
+            diagramCtx.lineWidth = 2;
+            diagramCtx.stroke();
+            
+            // 添加箭头标记
+            diagramCtx.fillStyle = 'red';
+            drawArrowhead(diagramCtx, width * 0.5, 20, width * 0.5, topHeight);
+        }
+
+        // 滑块事件监听器
+        n1Slider.addEventListener('input', function() {
+            n1 = parseFloat(this.value);
+            updateDisplayValues();
+            drawInterferencePattern();
+            drawMediumDiagram();
+        });
+
+        n2Slider.addEventListener('input', function() {
+            n2 = parseFloat(this.value);
+            updateDisplayValues();
+            drawInterferencePattern();
+            drawMediumDiagram();
+        });
+
+        n3Slider.addEventListener('input', function() {
+            n3 = parseFloat(this.value);
+            updateDisplayValues();
+            drawInterferencePattern();
+            drawMediumDiagram();
+        });
+
+        wavelengthSlider.addEventListener('input', function() {
+            wavelength = parseFloat(this.value);
+            updateDisplayValues();
+            drawInterferencePattern();
+            drawMediumDiagram();
+        });
+
+        thicknessSlider.addEventListener('input', function() {
+            thickness = parseFloat(this.value);
+            updateDisplayValues();
+            drawInterferencePattern();
+            drawMediumDiagram();
+        });
+        
+        // 初始化显示值
+        updateDisplayValues();
+        
+        // 初始化理论公式显示
+        // 检查是否存在formulaContainer元素，如果不存在则创建
+        if (!document.getElementById('formulaContainer')) {
+            const formulaContainer = document.createElement('div');
+            formulaContainer.id = 'formulaContainer';
+            formulaContainer.className = 'formula-container';
+            
+            // 将公式容器插入到控制面板中
+            const controlPanel = document.querySelector('.control-panel');
+            if (controlPanel) {
+                // 在最后一个参数组之后插入
+                const parameterGroups = controlPanel.querySelectorAll('.parameter-group');
+                if (parameterGroups.length > 0) {
+                    parameterGroups[parameterGroups.length - 1].after(formulaContainer);
+                } else {
+                    controlPanel.appendChild(formulaContainer);
+                }
+            }
+        }
+        
+        // 初始绘制
+        drawInterferencePattern();
+        drawMediumDiagram();
+        
+        // 添加公式相关的CSS样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .formula-container {
+                margin-top: 25px;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.7);
+                border-radius: 10px;
+                border: 1px solid var(--border-color);
+                box-shadow: 0 5px 15px var(--shadow-color);
+            }
+            
+            .formula-section h4 {
+                margin-top: 15px;
+                margin-bottom: 10px;
+                color: var(--dark-blue);
+                font-size: 1.1em;
+            }
+            
+            .formula-section p {
+                margin-bottom: 8px;
+                font-size: 0.95em;
+                line-height: 1.4;
+            }
+            
+            .formula {
+                font-family: 'Courier New', monospace;
+                background: rgba(33, 150, 243, 0.1);
+                padding: 10px;
+                border-radius: 5px;
+                text-align: center;
+                margin: 10px 0;
+                font-weight: bold;
+                font-size: 1.1em;
+            }
+            
+            .derivation {
+                font-style: italic;
+                color: var(--text-secondary);
+                border-left: 3px solid var(--accent-blue);
+                padding-left: 15px;
+                margin-top: 10px;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

@@ -1,0 +1,655 @@
+<!DOCTYPE html>  
+<html lang="zh-CN">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>静电场电场线仿真</title>  
+    <style>  
+        body {  
+            margin: 0;  
+            padding: 0;  
+            background-color: #121212;  
+            color: #eee;  
+            font-family: 'Segoe UI', sans-serif;  
+            overflow: hidden;  
+            display: flex;  
+            flex-direction: column;  
+            height: 100vh;  
+        }  
+  
+        #header {
+            background: rgba(20, 20, 30, 0.95);
+            padding: 10px 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #444;
+            flex-shrink: 0;
+        }
+        
+        #main-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #00bcd4;
+            margin: 0;
+        }
+        
+        #subtitle {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin: 2px 0 0 0;
+        }
+        
+        #author {
+            font-size: 0.9rem;
+            color: #aaa;
+            font-style: italic;
+            margin: 0;
+        }
+        
+        #main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+  
+        #controls-panel {  
+            width: 320px;
+            background: rgba(30, 30, 40, 0.95);  
+            padding: 20px;  
+            border-right: 1px solid #444;  
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);  
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }  
+  
+        h3 { 
+            margin: 0 0 15px 0; 
+            font-size: 1.1rem; 
+            color: #fff; 
+            text-align: center; 
+            border-bottom: 1px solid #555; 
+            padding-bottom: 10px;
+        }  
+  
+        .control-section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .control-section:last-child {
+            border-bottom: none;
+        }
+        
+        .control-row { 
+            margin-bottom: 15px; 
+        }  
+          
+        .label-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 5px; 
+            font-size: 0.9rem; 
+            color: #ccc;
+        }  
+          
+        input[type=range] {  
+            width: 100%;  
+            cursor: pointer;  
+            accent-color: #00bcd4;  
+        }  
+  
+        .val-display { 
+            font-family: 'Courier New', monospace; 
+            font-weight: bold; 
+        }  
+        .pos-color { 
+            color: #ff4d4d; 
+        }  
+        .neg-color { 
+            color: #4d94ff; 
+        }  
+        .neu-color { 
+            color: #888; 
+        }  
+        
+        #simulation-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        
+        canvas {  
+            display: block;  
+            background: #000;  
+        }  
+  
+        .tips {  
+            margin-top: 15px;  
+            font-size: 0.8rem;  
+            color: #888;  
+            line-height: 1.4;  
+        }
+        
+        #info-panel {
+            margin-top: auto;
+            background: rgba(25, 25, 35, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            max-height: 30vh;
+            overflow-y: auto;
+        }
+        
+        #info-panel h4 {
+            margin: 0 0 10px 0;
+            color: #00bcd4;
+            font-size: 1rem;
+        }
+        
+        #info-panel p {
+            margin: 0 0 10px 0;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        #info-panel ul {
+            margin: 0 0 10px 0;
+            padding-left: 20px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        #info-panel li {
+            margin-bottom: 5px;
+        }
+        
+        .field-line-color {
+            width: 15px;
+            height: 15px;
+            display: inline-block;
+            border-radius: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
+            border: 1px solid #555;
+        }
+        
+        .simulation-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #ccc;
+            z-index: 10;
+        }
+        
+        .section-title {
+            font-size: 1rem;
+            color: #00bcd4;
+            margin: 0 0 10px 0;
+            font-weight: bold;
+        }
+    </style>  
+</head>  
+<body>  
+  
+    <div id="header">
+        <div>
+            <h1 id="main-title">静电场电场线仿真</h1>
+            <p id="subtitle">一对点电荷周围电场中的电场线可视化</p>
+        </div>
+        <div>
+            <p id="author">作者：xatu_bai</p>
+        </div>
+    </div>
+    
+    <div id="main-container">
+        <div id="controls-panel">  
+            <div class="control-section">
+                <h3>仿真参数调节</h3>  
+                  
+                <div class="control-row">  
+                    <div class="label-row">  
+                        <span>左侧电荷 Q1</span>  
+                        <span id="txt-q1" class="val-display pos-color">+4</span>  
+                    </div>  
+                    <input type="range" id="sl-q1" min="-10" max="10" step="1" value="4">  
+                </div>  
+      
+                <div class="control-row">  
+                    <div class="label-row">  
+                        <span>右侧电荷 Q2</span>  
+                        <span id="txt-q2" class="val-display neg-color">-4</span>  
+                    </div>  
+                    <input type="range" id="sl-q2" min="-10" max="10" step="1" value="-4">  
+                </div>
+                
+                <div class="control-row">  
+                    <div class="label-row">  
+                        <span>电场线密度</span>  
+                        <span id="txt-density" class="val-display">12</span>  
+                    </div>  
+                    <input type="range" id="sl-density" min="1" max="20" step="1" value="12">  
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <div class="section-title">电场线颜色设置</div>
+                
+                <div class="control-row">  
+                    <div class="label-row">  
+                        <span>电场线颜色</span>  
+                        <div>
+                            <span class="field-line-color" id="color-indicator"></span>
+                            <span id="field-color-name">绿色</span>
+                        </div>
+                    </div>
+                    <input type="color" id="color-picker" value="#4ade80" style="width:100%; height:40px; margin-top:5px;">
+                </div>
+                
+                <div class="tips">  
+                    <strong>算法改进说明：</strong><br>  
+                    程序会自动识别拓扑结构。当电场线连接正负电荷时，只绘制一次，不再叠加。只有来自无穷远的线才会额外补充绘制。  
+                </div>
+            </div>
+            
+            <div id="info-panel">
+                <h4>电场线理论知识</h4>
+                <p><strong>电场线定义：</strong>电场线是用来直观描述电场分布的假想曲线，曲线上每一点的切线方向表示该点的电场强度方向。</p>
+                
+                <p><strong>电场线性质：</strong></p>
+                <ul>
+                    <li>电场线始于正电荷或无穷远处，终止于负电荷或无穷远处</li>
+                    <li>电场线不相交，不相切（除电荷所在点外）</li>
+                    <li>电场线的疏密程度表示电场强度的大小</li>
+                    <li>电场线不是电荷运动的轨迹（除非初速度为零）</li>
+                </ul>
+                
+                <p><strong>库仑定律：</strong></p>
+                <p>两个点电荷之间的作用力与它们的电荷量乘积成正比，与它们之间距离的平方成反比：</p>
+                <p style="text-align:center; font-family:'Courier New', monospace;">F = k·|q₁q₂|/r²</p>
+            </div>
+        </div>
+        
+        <div id="simulation-area">
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="simulation-info">
+                电场线密度: <span id="sim-density-display">12</span>
+            </div>
+        </div>
+    </div>
+  
+<script>  
+    const canvas = document.getElementById('canvas');  
+    const ctx = canvas.getContext('2d');  
+    const canvasContainer = document.getElementById('canvas-container');
+
+    // UI  
+    const slQ1 = document.getElementById('sl-q1');  
+    const slQ2 = document.getElementById('sl-q2');  
+    const slDensity = document.getElementById('sl-density');
+    const colorPicker = document.getElementById('color-picker');
+    const txtQ1 = document.getElementById('txt-q1');  
+    const txtQ2 = document.getElementById('txt-q2');  
+    const txtDensity = document.getElementById('txt-density');
+    const fieldColorName = document.getElementById('field-color-name');
+    const colorIndicator = document.getElementById('color-indicator');
+    const simDensityDisplay = document.getElementById('sim-density-display');
+  
+    let containerWidth, containerHeight;  
+    let charges = [];  
+    
+    // 电场线颜色 (默认绿色)
+    let fieldLineColor = '#4ade80';
+    
+    // 颜色名称映射
+    const colorNames = {
+        '#4ade80': '绿色',
+        '#3b82f6': '蓝色',
+        '#ef4444': '红色',
+        '#f59e0b': '橙色',
+        '#8b5cf6': '紫色',
+        '#06b6d4': '青色',
+        '#ffffff': '白色',
+        '#fbbf24': '黄色'
+    };
+
+    // 物理仿真参数  
+    const PARAMS = {  
+        step: 5,            // 步长  
+        maxIter: 1000,      // 最大迭代次数（防止死循环）  
+        density: 12,        // 电荷线密度 (每单位电荷产生多少根线)  
+        collisionR: 15,     // 碰撞判定半径  
+        arrowSpacing: 80    // 箭头间距  
+    };  
+  
+    function init() {  
+        resize();  
+        window.addEventListener('resize', resize);  
+        slQ1.addEventListener('input', update);  
+        slQ2.addEventListener('input', update);  
+        slDensity.addEventListener('input', updateDensity);
+        colorPicker.addEventListener('input', updateColor);
+        
+        // 设置颜色选择器的初始值
+        colorPicker.value = fieldLineColor;
+        colorIndicator.style.backgroundColor = fieldLineColor;
+        updateColorName(fieldLineColor);
+        
+        update();  
+    }  
+  
+    function resize() {  
+        // 计算容器尺寸
+        containerWidth = canvasContainer.clientWidth;
+        containerHeight = canvasContainer.clientHeight;
+        
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
+        
+        draw();  
+    }  
+  
+    function update() {  
+        const q1 = parseInt(slQ1.value);  
+        const q2 = parseInt(slQ2.value);  
+          
+        updateText(txtQ1, q1);  
+        updateText(txtQ2, q2);  
+  
+        // 设置电荷位置  
+        const spacing = Math.min(canvas.width, canvas.height) * 0.3;  
+        charges = [  
+            { x: canvas.width/2 - spacing, y: canvas.height/2, q: q1, id: 1 },  
+            { x: canvas.width/2 + spacing, y: canvas.height/2, q: q2, id: 2 }  
+        ];  
+  
+        draw();  
+    }  
+    
+    function updateDensity() {
+        const density = parseInt(slDensity.value);
+        PARAMS.density = density;
+        txtDensity.innerText = density;
+        simDensityDisplay.innerText = density;
+        draw();
+    }
+    
+    function updateColor() {
+        fieldLineColor = colorPicker.value;
+        colorIndicator.style.backgroundColor = fieldLineColor;
+        updateColorName(fieldLineColor);
+        draw();
+    }
+    
+    function updateColorName(color) {
+        // 查找最接近的颜色名称
+        let closestColor = '#4ade80';
+        let minDiff = Infinity;
+        
+        for (const [key, name] of Object.entries(colorNames)) {
+            const diff = colorDiff(color, key);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestColor = key;
+            }
+        }
+        
+        fieldColorName.textContent = colorNames[closestColor] || '自定义颜色';
+    }
+    
+    function colorDiff(color1, color2) {
+        // 简单的颜色差异计算
+        const r1 = parseInt(color1.slice(1, 3), 16);
+        const g1 = parseInt(color1.slice(3, 5), 16);
+        const b1 = parseInt(color1.slice(5, 7), 16);
+        
+        const r2 = parseInt(color2.slice(1, 3), 16);
+        const g2 = parseInt(color2.slice(3, 5), 16);
+        const b2 = parseInt(color2.slice(5, 7), 16);
+        
+        return Math.sqrt((r1-r2)**2 + (g1-g2)**2 + (b1-b2)**2);
+    }
+  
+    function updateText(el, val) {  
+        el.innerText = (val > 0 ? "+" : "") + val;  
+        el.className = "val-display " + (val > 0 ? "pos-color" : (val < 0 ? "neg-color" : "neu-color"));  
+    }  
+  
+    // --- 核心物理计算 ---  
+  
+    function getField(x, y) {  
+        let ex = 0, ey = 0;  
+        let minMsg = { distSq: Infinity, charge: null }; // 最近电荷信息  
+  
+        for (let c of charges) {  
+            if (c.q === 0) continue;  
+            const dx = x - c.x;  
+            const dy = y - c.y;  
+            const rSq = dx*dx + dy*dy;  
+              
+            if (rSq < minMsg.distSq) {  
+                minMsg.distSq = rSq;  
+                minMsg.charge = c;  
+            }  
+  
+            // 库仑定律 E = kQ/r^2 (忽略k)  
+            const r = Math.sqrt(rSq);  
+            // 避免除以零  
+            const r3 = r * rSq;   
+            if (r3 < 0.1) return { x:0, y:0, near: c };  
+  
+            ex += c.q * dx / r3;  
+            ey += c.q * dy / r3;  
+        }  
+  
+        return { x: ex, y: ey, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };  
+    }  
+  
+    // --- 追踪单条线 ---  
+    // startCharge: 发出该线的电荷（如果是负电荷，则表示反向追踪的起点）  
+    // direction: 1 为顺着电场（正电荷发出），-1 为逆着电场（负电荷吸收）  
+    function traceLine(startX, startY, direction) {  
+        let path = [{x: startX, y: startY}];  
+        let currX = startX;  
+        let currY = startY;  
+        let hitCharge = null; // 记录这条线最终撞到了哪个电荷  
+  
+        for (let i = 0; i < PARAMS.maxIter; i++) {  
+            const f = getField(currX, currY);  
+              
+            // 归一化电场矢量  
+            const len = Math.sqrt(f.x*f.x + f.y*f.y);  
+            if (len === 0) break;  
+  
+            // 前进一步  
+            const dx = (f.x / len) * PARAMS.step * direction;  
+            const dy = (f.y / len) * PARAMS.step * direction;  
+  
+            currX += dx;  
+            currY += dy;  
+            path.push({x: currX, y: currY});  
+  
+            // 1. 边界检查 (出屏幕太远就停止)  
+            if (currX < -50 || currX > canvas.width + 50 || currY < -50 || currY > canvas.height + 50) {  
+                break;  
+            }  
+  
+            // 2. 碰撞检查 (是否撞到了任何电荷)  
+            if (f.nearDistSq < PARAMS.collisionR * PARAMS.collisionR) {  
+                hitCharge = f.nearCharge;  
+                break; // 撞到了，结束追踪  
+            }  
+        }  
+        return { path, hitCharge };  
+    }  
+  
+    // --- 绘图主循环 ---  
+  
+    function draw() {  
+        ctx.fillStyle = "#000"; // 清除背景  
+        ctx.fillRect(0, 0, canvas.width, canvas.height);  
+  
+        // 1. 计算并绘制所有线  
+        // 策略：  
+        // A. 正电荷：必须发射线条。这些线一定会画。  
+        // B. 负电荷：逆向发射线条。但是，如果逆向追溯回去发现撞到了正电荷，说明这条线在A阶段已经画过了，必须丢弃。  
+          
+        charges.forEach(c => {  
+            if (c.q === 0) return;  
+  
+            // 决定线条数量  
+            const count = Math.abs(c.q) * PARAMS.density;  
+            const isPositive = c.q > 0;  
+            const direction = isPositive ? 1 : -1; // 正电荷顺场走，负电荷逆场走  
+              
+            // 颜色 - 统一使用fieldLineColor
+            const color = fieldLineColor + 'CC'; // 添加透明度
+  
+            for (let i = 0; i < count; i++) {  
+                const angle = (Math.PI * 2 * i) / count;  
+                const startR = PARAMS.collisionR + 2;  
+                const sx = c.x + Math.cos(angle) * startR;  
+                const sy = c.y + Math.sin(angle) * startR;  
+  
+                // 追踪路径  
+                const result = traceLine(sx, sy, direction);  
+  
+                let shouldDraw = false;  
+  
+                if (isPositive) {  
+                    // 正电荷发出的线，永远绘制  
+                    shouldDraw = true;  
+                } else {  
+                    // 负电荷反向追踪的线  
+                    // 只有当它没有撞到任何正电荷（即来自无穷远）时才绘制  
+                    // 注意：result.hitCharge 是这条反向线最终碰到的东西  
+                    if (result.hitCharge && result.hitCharge.q > 0) {  
+                        shouldDraw = false; // 它是连接线，正电荷那边已经画了，去重  
+                    } else {  
+                        shouldDraw = true; // 来自无穷远，需要补画  
+                    }  
+                }  
+  
+                if (shouldDraw) {  
+                    drawPath(result.path, color, direction); // 传入 direction 用于画箭头  
+                }  
+            }  
+        });  
+  
+        // 2. 绘制电荷球体  
+        charges.forEach(c => {  
+            if (c.q === 0) {  
+                 // 画中性灰点  
+                ctx.beginPath();  
+                ctx.arc(c.x, c.y, 8, 0, Math.PI*2);  
+                ctx.fillStyle = "#444";  
+                ctx.fill();  
+                return;  
+            }  
+              
+            const r = 12 + Math.abs(c.q); // 电量越大球越大  
+            ctx.beginPath();  
+            ctx.arc(c.x, c.y, r, 0, Math.PI * 2);  
+              
+            // 径向渐变，更有立体感  
+            const grad = ctx.createRadialGradient(c.x-r/3, c.y-r/3, r/4, c.x, c.y, r);  
+            if (c.q > 0) {  
+                grad.addColorStop(0, '#ffaaaa');  
+                grad.addColorStop(1, '#cc0000');  
+            } else {  
+                grad.addColorStop(0, '#aaddff');  
+                grad.addColorStop(1, '#0044cc');  
+            }  
+              
+            ctx.fillStyle = grad;  
+            ctx.fill();  
+              
+            // 文字符号  
+            ctx.fillStyle = "#fff";  
+            ctx.font = "bold 16px Arial";  
+            ctx.textAlign = "center";  
+            ctx.textBaseline = "middle";  
+            ctx.fillText(c.q > 0 ? "+" : "-", c.x, c.y);  
+        });  
+    }  
+  
+    function drawPath(path, color, genDir) {  
+        if (path.length < 2) return;  
+  
+        ctx.beginPath();  
+        ctx.strokeStyle = color;  
+        ctx.lineWidth = 1.5;  
+        ctx.moveTo(path[0].x, path[0].y);  
+          
+        for (let i = 1; i < path.length; i++) {  
+            ctx.lineTo(path[i].x, path[i].y);  
+        }  
+        ctx.stroke();  
+  
+        // 绘制箭头  
+        // 电场线方向永远是从正 -> 负  
+        // 1. 如果 genDir = 1 (正电荷发出)，path顺序就是电场方向。  
+        // 2. 如果 genDir = -1 (负电荷反向追踪)，path顺序是电场反方向。  
+          
+        let distAcc = 0;  
+        ctx.fillStyle = color; // 使用相同的颜色绘制箭头
+        
+        for (let i = 1; i < path.length; i++) {  
+            const dx = path[i].x - path[i-1].x;  
+            const dy = path[i].y - path[i-1].y;  
+            const dist = Math.sqrt(dx*dx + dy*dy);  
+            distAcc += dist;  
+  
+            if (distAcc > PARAMS.arrowSpacing) {  
+                distAcc = 0;  
+                  
+                // 计算切线角度  
+                let angle = Math.atan2(dy, dx);  
+                  
+                // 修正箭头指向  
+                if (genDir === -1) {  
+                    angle += Math.PI; // 反转箭头  
+                }  
+  
+                drawArrow(path[i].x, path[i].y, angle);  
+            }  
+        }  
+    }  
+  
+    function drawArrow(x, y, angle) {  
+        ctx.save();  
+        ctx.translate(x, y);  
+        ctx.rotate(angle);  
+        ctx.beginPath();  
+        ctx.moveTo(3, 0);  
+        ctx.lineTo(-4, -3);  
+        ctx.lineTo(-4, 3);  
+        ctx.fill();  
+        ctx.restore();  
+    }  
+  
+    // 启动  
+    init();  
+  
+</script>  
+</body>  
+</html>  
