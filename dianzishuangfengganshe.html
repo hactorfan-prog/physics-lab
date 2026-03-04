@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>电子双缝干涉 - 3D深度模拟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 标题区域 - 最顶部 */
+        #title-area {
+            background: linear-gradient(to bottom, rgba(40,40,40,0.95), rgba(30,30,30,0.9));
+            padding: 15px 25px;
+            border-bottom: 2px solid #444;
+            height: 100px;
+        }
+        
+        .main-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #00ffff;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .author {
+            color: #ff9900;
+            font-size: 16px;
+            font-weight: bold;
+            background: rgba(30,30,30,0.8);
+            padding: 6px 12px;
+            border-radius: 4px;
+            /* 去掉边框 */
+            border: none;
+        }
+        
+        .subtitle {
+            color: #bbb;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        
+        /* 主内容区 - 左右分栏 */
+        #main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* 仿真区 - 左侧 */
+        #simulation-area {
+            flex: 1;
+            position: relative;
+            background: #1a1a1a;
+        }
+        
+        /* 参数控制区 - 右侧 */
+        #control-area {
+            background: #2a2a2a;
+            padding: 20px;
+            width: 320px;
+            height: 100%;
+            overflow-y: auto;
+            border-left: 2px solid #444;
+        }
+        
+        /* 控制区样式 */
+        .control-section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .control-section h3 {
+            color: #ff9900;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .control-section h3::before {
+            content: "⚙️";
+            margin-right: 8px;
+            font-size: 14px;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #ddd;
+        }
+        
+        .value-display {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #444;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff9900;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        /* 模式选择框 */
+        .mode-selector {
+            margin-top: 10px;
+        }
+        
+        .mode-selector select {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        /* 公式区域 - 移动到仿真模式下方 */
+        .formula-section {
+            background: rgba(40,40,60,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border: 1px solid #555;
+        }
+        
+        .formula-title {
+            color: #ff9900;
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .formula-title::before {
+            content: "🧪";
+            margin-right: 8px;
+            font-size: 18px;
+        }
+        
+        .formula {
+            font-family: 'Cambria', 'Times New Roman', serif;
+            font-size: 18px;
+            color: #aaddff;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(20,30,40,0.6);
+            border-radius: 5px;
+            border-left: 3px solid #00aaff;
+        }
+        
+        .formula-note {
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        
+        /* 仿真区内UI */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #00ffff;
+            font-family: monospace;
+            font-size: 18px;
+            text-align: right;
+            background: rgba(30,30,30,0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #555;
+        }
+        
+        #controls {
+            pointer-events: auto;
+            background: rgba(50, 50, 50, 0.9);
+            padding: 15px;
+            margin-bottom: 30px;
+            align-self: center;
+            border-radius: 30px;
+            border: 1px solid #555;
+            display: flex;
+            gap: 15px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 10px 22px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            background: #00ffff;
+            color: #000;
+            box-shadow: 0 0 15px #00ffff;
+            border-color: #00ffff;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        /* 高亮按钮样式 */
+        .highlighted {
+            background: #00aaff !important;
+            color: #000 !important;
+            border-color: #00ffff !important;
+            box-shadow: 0 0 10px #00aaff !important;
+            font-weight: bold;
+        }
+        
+        /* 标签容器 */
+        #labels-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .label {
+            position: absolute;
+            color: #fff;
+            background: rgba(30,30,30,0.9);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid #555;
+            pointer-events: auto;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            #control-area {
+                width: 280px;
+            }
+            
+            button {
+                min-width: 100px;
+                padding: 8px 15px;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <!-- 标题区域 - 最顶部 -->
+    <div id="title-area">
+        <div class="main-title">
+            <h1>电子双缝干涉实验可视化</h1>
+            <div class="author">作者：xatu_bai</div>
+        </div>
+        <p class="subtitle">探索量子世界中粒子的波粒二象性：电子如何一个个通过双缝，却在屏幕上形成干涉条纹。观察单个电子的粒子性和波动性统一。</p>
+    </div>
+    
+    <!-- 主内容区 - 左右分栏 -->
+    <div id="main-content">
+        <!-- 仿真区 - 左侧 -->
+        <div id="simulation-area">
+            <div id="ui-layer">
+                <div id="stats">
+                    电子总数: 0<br>
+                    德布罗意波长: <span id="wavelength-value">1.62 Å</span><br>
+                    <span style="font-size:12px; color:#aaa">状态: 已暂停</span>
+                </div>
+                <div id="controls">
+                    <button id="btn-toggle">▶ 开始模拟</button>
+                    <button id="btn-slow">🐢 慢速观察</button>
+                    <button id="btn-fast">🚀 极速干涉</button>
+                    <button id="btn-reset">🔄 重置屏幕</button>
+                </div>
+                
+                <!-- 标签容器 -->
+                <div id="labels-container"></div>
+            </div>
+        </div>
+        
+        <!-- 参数控制区 - 右侧 -->
+        <div id="control-area">
+            <!-- 参数控制区域 -->
+            <div class="control-section">
+                <h3>双缝参数调节</h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>缝间距 (d)</span>
+                        <span id="slit-gap-value" class="value-display">3.0</span>
+                    </div>
+                    <input type="range" id="slit-gap-slider" min="1.0" max="6.0" step="0.1" value="3.0">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>双缝-屏幕距离 (L)</span>
+                        <span id="screen-distance-value" class="value-display">50</span>
+                    </div>
+                    <input type="range" id="screen-distance-slider" min="30" max="80" step="1" value="50">
+                </div>
+            </div>
+            
+            <!-- 电子速度调节 -->
+            <div class="control-section">
+                <h3>电子速度调节</h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>电子速度 (v)</span>
+                        <span id="electron-speed-value" class="value-display">1.5</span>
+                    </div>
+                    <input type="range" id="electron-speed-slider" min="0.5" max="5.0" step="0.1" value="1.5">
+                </div>
+                <p style="font-size:13px; color:#aaa; margin-top:10px;">
+                    速度变化 → 动量变化 → 德布罗意波长变化<br>
+                    波长λ = h/(m·v)，其中h为普朗克常数
+                </p>
+            </div>
+            
+            <!-- 模式选择区域 -->
+            <div class="control-section">
+                <h3>仿真模式选择</h3>
+                <div class="mode-selector">
+                    <select id="mode-select">
+                        <option value="single">逐个粒子模式</option>
+                        <option value="mass">大量粒子模式</option>
+                    </select>
+                </div>
+                <p style="font-size:13px; color:#aaa; margin-top:10px;">
+                    <strong>逐个粒子模式：</strong>电子一个一个发射，可清晰观察粒子性<br>
+                    <strong>大量粒子模式：</strong>快速发射大量电子，快速形成干涉图案
+                </p>
+            </div>
+            
+            <!-- 公式区域 - 移动到仿真模式下方 -->
+            <div class="formula-section">
+                <div class="formula-title">类比杨氏双缝干涉条纹间距公式</div>
+                <div class="formula">Δx = λL / d</div>
+                <p class="formula-note">
+                    <strong>Δx</strong> - 干涉条纹间距<br>
+                    <strong>λ</strong> - 电子德布罗意波长: λ = h/p<br>
+                    <strong>L</strong> - 双缝到屏幕距离<br>
+                    <strong>d</strong> - 双缝间距<br><br>
+                    该公式揭示了电子干涉与光干涉的数学同构性，体现了波粒二象性的深刻统一。
+                </p>
+            </div>
+            
+            <!-- 说明区域 -->
+            <div class="control-section" style="border-bottom:none;">
+                <h3>实验说明</h3>
+                <p style="font-size:13px; line-height:1.6; color:#bbb;">
+                    本模拟展示了电子双缝干涉实验的核心现象：<br><br>
+                    1. 电子以粒子形式一个个通过双缝<br>
+                    2. 每个电子的落点似乎是随机的<br>
+                    3. 大量电子累积后形成干涉条纹<br>
+                    4. 调节电子速度可改变德布罗意波长<br>
+                    5. 波长变化直接影响干涉条纹间距
+                </p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- 物理常数 ---
+    const PLANCK_CONSTANT = 6.626e-34; // 普朗克常数 h (J·s)
+    const ELECTRON_MASS = 9.109e-31;   // 电子质量 m (kg)
+    const ELECTRON_CHARGE = 1.602e-19; // 电子电荷 e (C)
+    
+    // --- 场景初始化 ---
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x1a1a1a, 0.005);
+    
+    const camera = new THREE.PerspectiveCamera(45, (window.innerWidth - 320) / (window.innerHeight - 100), 0.1, 1000);
+    camera.position.set(40, 30, 60);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth - 320, window.innerHeight - 100);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.getElementById('simulation-area').appendChild(renderer.domElement);
+    
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, -10);
+    controls.enableDamping = true;
+    
+    // --- 坐标定义 ---
+    const Z_SOURCE = 25; // 减小发射器和双缝之间的距离为原来的一半
+    const Z_SLIT = 10;
+    let Z_SCREEN = -40;
+    let SCREEN_DISTANCE = 50;
+    let SLIT_GAP = 3.0;
+    const SLIT_WIDTH = 0.8;
+    
+    // 电子速度参数
+    let electronSpeed = 1.5; // 初始速度
+    let electronWavelength = 1.62; // 初始波长(Å)
+    
+    // 当前高亮按钮
+    let highlightedButton = null;
+    
+    // 更新德布罗意波长显示
+    function updateWavelengthDisplay() {
+        // 计算德布罗意波长 λ = h/p = h/(m·v)
+        const baseWavelength = 1.62; // 基准波长(Å)，对应速度1.5
+        const calculatedWavelength = (baseWavelength * 1.5) / electronSpeed;
+        
+        electronWavelength = calculatedWavelength;
+        document.getElementById('wavelength-value').textContent = calculatedWavelength.toFixed(2) + ' Å';
+        
+        // 更新统计显示中的波长
+        document.getElementById('stats').innerHTML = `电子总数: ${totalHits}<br>德布罗意波长: ${calculatedWavelength.toFixed(2)} Å<br><span style="font-size:12px; color:#aaa">状态: ${isRunning ? '运行中' : '已暂停'}</span>`;
+    }
+    
+    // 高亮按钮函数
+    function highlightButton(button) {
+        // 移除之前的高亮
+        if (highlightedButton) {
+            highlightedButton.classList.remove('highlighted');
+        }
+        
+        // 添加新的高亮
+        button.classList.add('highlighted');
+        highlightedButton = button;
+    }
+    
+    // 更新屏幕位置
+    function updateScreenPosition() {
+        Z_SCREEN = Z_SLIT - SCREEN_DISTANCE;
+        if (screenMesh) {
+            screenMesh.position.z = Z_SCREEN;
+        }
+    }
+    
+    // --- 标签管理 ---
+    const labelsContainer = document.getElementById('labels-container');
+    const labels = {};
+    
+    function updateLabels() {
+        // 将3D坐标转换为屏幕坐标
+        function worldToScreen(position, heightOffset = 10) {
+            const vector = position.clone();
+            // 添加高度偏移，让标签显示在物体"头顶"
+            vector.y += heightOffset;
+            vector.project(camera);
+            
+            const x = (vector.x * 0.5 + 0.5) * (window.innerWidth - 320);
+            const y = (-vector.y * 0.5 + 0.5) * (window.innerHeight - 100);
+            
+            return { x, y };
+        }
+        
+        // 更新电子发射器标签
+        if (gunGroup) {
+            const screenPos = worldToScreen(gunGroup.position, 5);
+            if (!labels.gun) {
+                labels.gun = document.createElement('div');
+                labels.gun.className = 'label';
+                labels.gun.textContent = '电子发射器';
+                labels.gun.style.color = '#ff9900';
+                labels.gun.style.backgroundColor = 'rgba(30,30,30,0.85)';
+                labelsContainer.appendChild(labels.gun);
+            }
+            labels.gun.style.left = screenPos.x + 'px';
+            labels.gun.style.top = screenPos.y + 'px';
+        }
+        
+        // 更新双缝挡板标签
+        if (barrierGroup) {
+            const screenPos = worldToScreen(barrierGroup.position, 9);
+            if (!labels.slit) {
+                labels.slit = document.createElement('div');
+                labels.slit.className = 'label';
+                labels.slit.textContent = '双缝挡板';
+                labels.slit.style.color = '#00ffff';
+                labels.slit.style.backgroundColor = 'rgba(30,30,30,0.85)';
+                labelsContainer.appendChild(labels.slit);
+            }
+            labels.slit.style.left = screenPos.x + 'px';
+            labels.slit.style.top = screenPos.y + 'px';
+        }
+        
+        // 更新探测屏幕标签
+        if (screenMesh) {
+            const screenPos = worldToScreen(screenMesh.position, 15);
+            if (!labels.screen) {
+                labels.screen = document.createElement('div');
+                labels.screen.className = 'label';
+                labels.screen.textContent = '探测屏幕';
+                labels.screen.style.color = '#00ffff';
+                labels.screen.style.backgroundColor = 'rgba(30,30,30,0.85)';
+                labelsContainer.appendChild(labels.screen);
+            }
+            labels.screen.style.left = screenPos.x + 'px';
+            labels.screen.style.top = screenPos.y + 'px';
+        }
+    }
+    
+    // --- 灯光增强 ---
+    const ambientLight = new THREE.AmbientLight(0x444444);
+    scene.add(ambientLight);
+    
+    const slitLight = new THREE.PointLight(0x00ffff, 2, 80);
+    slitLight.position.set(0, 5, Z_SLIT);
+    scene.add(slitLight);
+    
+    const sourceLight = new THREE.PointLight(0xff9900, 1.5, 60);
+    sourceLight.position.set(0, 0, Z_SOURCE);
+    scene.add(sourceLight);
+    
+    // --- 双缝挡板 ---
+    let barrierGroup;
+    
+    function createDoubleSlit() {
+        if (barrierGroup) {
+            scene.remove(barrierGroup);
+        }
+        
+        barrierGroup = new THREE.Group();
+        
+        const wallMaterial = new THREE.MeshPhongMaterial({
+            color: 0x555555,
+            specular: 0x333333,
+            shininess: 30,
+            emissive: 0x111111
+        });
+        
+        const glowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const wallHeight = 15;
+        const wallDepth = 1;
+        
+        // 左板
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(10, wallHeight, wallDepth), wallMaterial);
+        leftWall.position.set(-(5 + SLIT_WIDTH/2 + SLIT_GAP/2), 0, 0);
+        barrierGroup.add(leftWall);
+        
+        // 右板
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(10, wallHeight, wallDepth), wallMaterial);
+        rightWall.position.set((5 + SLIT_WIDTH/2 + SLIT_GAP/2), 0, 0);
+        barrierGroup.add(rightWall);
+        
+        // 中间墙
+        const midWallWidth = SLIT_GAP - SLIT_WIDTH;
+        const midWall = new THREE.Mesh(new THREE.BoxGeometry(midWallWidth, wallHeight, wallDepth), wallMaterial);
+        midWall.position.set(0, 0, 0);
+        barrierGroup.add(midWall);
+        
+        // 缝隙边缘发光
+        function createGlowStrip(x) {
+            const geo = new THREE.BoxGeometry(0.15, wallHeight, wallDepth + 0.3);
+            const mesh = new THREE.Mesh(geo, glowMaterial);
+            mesh.position.set(x, 0, 0);
+            return mesh;
+        }
+        
+        // 左缝边缘
+        barrierGroup.add(createGlowStrip(-SLIT_GAP/2 - SLIT_WIDTH/2));
+        barrierGroup.add(createGlowStrip(-SLIT_GAP/2 + SLIT_WIDTH/2));
+        // 右缝边缘
+        barrierGroup.add(createGlowStrip(SLIT_GAP/2 - SLIT_WIDTH/2));
+        barrierGroup.add(createGlowStrip(SLIT_GAP/2 + SLIT_WIDTH/2));
+        
+        barrierGroup.position.z = Z_SLIT;
+        scene.add(barrierGroup);
+    }
+    
+    createDoubleSlit();
+    
+    // --- 电子枪（橙色） ---
+    const gunGroup = new THREE.Group();
+    const gunBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 1.5, 6, 16), 
+        new THREE.MeshPhongMaterial({
+            color: 0xff9900,
+            specular: 0x333333,
+            shininess: 50,
+            emissive: 0x331100
+        })
+    );
+    gunBody.rotation.x = Math.PI/2;
+    gunGroup.add(gunBody);
+    
+    const nozzle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.2, 0.2, 0.5, 16), 
+        new THREE.MeshBasicMaterial({
+            color: 0xff9900,
+            transparent: true,
+            opacity: 1.0
+        })
+    );
+    nozzle.rotation.x = Math.PI/2;
+    nozzle.position.z = -3.2;
+    gunGroup.add(nozzle);
+    
+    // 枪口光晕
+    const gunGlow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 16, 16),
+        new THREE.MeshBasicMaterial({
+            color: 0xff9900,
+            transparent: true,
+            opacity: 0.4
+        })
+    );
+    gunGlow.position.z = -3.5;
+    gunGroup.add(gunGlow);
+    
+    gunGroup.position.set(0, 0, Z_SOURCE);
+    scene.add(gunGroup);
+    
+    // --- 探测屏幕 ---
+    let screenMesh;
+    let screenTex;
+    let ctx;
+    
+    function createScreen() {
+        const screenResX = 512;
+        const screenResY = 256;
+        const screenCanvas = document.createElement('canvas');
+        screenCanvas.width = screenResX;
+        screenCanvas.height = screenResY;
+        ctx = screenCanvas.getContext('2d');
+        
+        // 修改屏幕底色为深灰色，与仿真区背景区分
+        function clearScreen() {
+            ctx.fillStyle = '#2a2a2a'; // 改为深灰色，与仿真区背景区分
+            ctx.fillRect(0, 0, screenResX, screenResY);
+            ctx.strokeStyle = '#555'; // 加深边框颜色
+            ctx.lineWidth = 3;
+            ctx.strokeRect(5, 5, screenResX - 10, screenResY - 10);
+        }
+        
+        clearScreen();
+        
+        screenTex = new THREE.CanvasTexture(screenCanvas);
+        const screenMat = new THREE.MeshBasicMaterial({ 
+            map: screenTex, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.95
+        });
+        const screenGeo = new THREE.PlaneGeometry(50, 25);
+        screenMesh = new THREE.Mesh(screenGeo, screenMat);
+        
+        updateScreenPosition();
+        scene.add(screenMesh);
+    }
+    
+    createScreen();
+    
+    // --- 物理逻辑 ---
+    const electrons = [];
+    const electronGeo = new THREE.SphereGeometry(0.3, 8, 8);
+    const electronMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.9
+    });
+    
+    let totalHits = 0;
+    let spawnRate = 1;
+    let speed = 1.5;
+    let isRunning = false; // 默认暂停状态
+    let mode = 'single';
+    let lastSpawnTime = 0;
+    let singleModeInterval = 500;
+    
+    // 修正的概率分布函数（包含L和λ依赖）
+    function getTargetX() {
+        while(true) {
+            const x = (Math.random() - 0.5) * 50;
+            
+            // 1. 包络函数（高斯分布）
+            const envelope = Math.exp(-(x*x)/(2 * 64));
+            
+            // 2. 修正的干涉项：包含L和λ依赖
+            // 使用实际的德布罗意波长
+            const wavelength = electronWavelength; // 单位：Å
+            
+            // 相位 = π * d * x / (λ * L)
+            // 注意：这里需要对单位进行适当缩放，使条纹间距合理
+            const phase = Math.PI * SLIT_GAP * x / (wavelength * SCREEN_DISTANCE * 0.1);
+            const interference = Math.cos(phase) * Math.cos(phase); // cos²(phase)
+            
+            const prob = envelope * interference;
+            
+            if(Math.random() < prob) return x;
+        }
+    }
+    
+    function spawnElectron() {
+        const e = new THREE.Mesh(electronGeo, electronMat);
+        
+        const startX = (Math.random()-0.5) * 0.2;
+        const startY = (Math.random()-0.5) * 0.2;
+        e.position.set(startX, startY, Z_SOURCE - 3.5);
+        
+        const chosenSlitSign = Math.random() > 0.5 ? 1 : -1;
+        const slitX = chosenSlitSign * (SLIT_GAP / 2) + (Math.random()-0.5)* (SLIT_WIDTH * 0.8);
+        const slitY = (Math.random()-0.5) * 2;
+        
+        const targetX = getTargetX();
+        const targetY = (Math.random()-0.5) * 10;
+        
+        e.userData = {
+            phase: 1,
+            p1: new THREE.Vector3(e.position.x, e.position.y, e.position.z),
+            p2: new THREE.Vector3(slitX, slitY, Z_SLIT),
+            p3: new THREE.Vector3(targetX, targetY, Z_SCREEN),
+            progress: 0
+        };
+        
+        scene.add(e);
+        electrons.push(e);
+    }
+    
+    function recordHit(x, y) {
+        if (!ctx) return;
+        
+        const uvX = (x / 50 + 0.5) * 512;
+        const uvY = (-y / 25 + 0.5) * 256;
+        
+        const r = mode === 'mass' ? 1.0 : 1.5;
+        const alpha = mode === 'mass' ? 0.2 : 0.5;
+        
+        ctx.beginPath();
+        ctx.arc(uvX, uvY, r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
+        ctx.fill();
+        screenTex.needsUpdate = true;
+        
+        totalHits++;
+        document.getElementById('stats').innerHTML = `电子总数: ${totalHits}<br>德布罗意波长: ${electronWavelength.toFixed(2)} Å<br><span style="font-size:12px; color:#aaa">状态: ${isRunning ? '运行中' : '已暂停'}</span>`;
+    }
+    
+    // --- 动画循环 ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        
+        // 更新标签位置
+        updateLabels();
+        
+        if(isRunning) {
+            // 根据模式调整生成逻辑
+            const currentTime = Date.now();
+            
+            if (mode === 'single') {
+                // 逐个粒子模式：严格一个一个发射
+                if (currentTime - lastSpawnTime > singleModeInterval && electrons.length < 5) {
+                    spawnElectron();
+                    lastSpawnTime = currentTime;
+                }
+            } else {  // mass模式
+                for(let k=0; k<spawnRate; k++) spawnElectron();
+            }
+            
+            // 更新电子位置
+            for(let i=electrons.length-1; i>=0; i--) {
+                const e = electrons[i];
+                const d = e.userData;
+                
+                d.progress += (speed * 0.01);
+                
+                const totalDist = (Z_SOURCE - 3.5) - Z_SCREEN;
+                const currentZ = (Z_SOURCE - 3.5) - d.progress * totalDist;
+                
+                if (currentZ > Z_SLIT) {
+                    const ratio = ((Z_SOURCE - 3.5) - currentZ) / ((Z_SOURCE - 3.5) - Z_SLIT);
+                    e.position.lerpVectors(d.p1, d.p2, ratio);
+                } else if (currentZ > Z_SCREEN) {
+                    const ratio = (Z_SLIT - currentZ) / (Z_SLIT - Z_SCREEN);
+                    e.position.lerpVectors(d.p2, d.p3, ratio);
+                    e.material.color.setHex(0x00ffff);
+                } else {
+                    recordHit(d.p3.x, d.p3.y);
+                    scene.remove(e);
+                    electrons.splice(i, 1);
+                    continue;
+                }
+                
+                e.position.z = currentZ;
+            }
+        }
+        
+        renderer.render(scene, camera);
+    }
+    
+    // --- 事件处理 ---
+    function handleResize() {
+        const width = window.innerWidth - 320;
+        const height = window.innerHeight - 100;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+    }
+    
+    window.addEventListener('resize', handleResize);
+    
+    // 开始/暂停按钮
+    document.getElementById('btn-toggle').onclick = function() {
+        isRunning = !isRunning;
+        this.textContent = isRunning ? '⏸ 暂停模拟' : '▶ 开始模拟';
+        document.getElementById('stats').innerHTML = `电子总数: ${totalHits}<br>德布罗意波长: ${electronWavelength.toFixed(2)} Å<br><span style="font-size:12px; color:#aaa">状态: ${isRunning ? '运行中' : '已暂停'}</span>`;
+    };
+    
+    // 慢速按钮
+    const btnSlow = document.getElementById('btn-slow');
+    btnSlow.onclick = () => {
+        spawnRate = 1;
+        speed = 0.5;
+        electronSpeed = 0.5;
+        updateWavelengthDisplay();
+        highlightButton(btnSlow);
+        if (mode === 'single') {
+            singleModeInterval = 800;
+        }
+    };
+    
+    // 快速按钮
+    const btnFast = document.getElementById('btn-fast');
+    btnFast.onclick = () => {
+        spawnRate = 20;
+        speed = 5.0;
+        electronSpeed = 5.0;
+        updateWavelengthDisplay();
+        highlightButton(btnFast);
+        if (mode === 'single') {
+            singleModeInterval = 100;
+        }
+    };
+    
+    // 重置按钮
+    document.getElementById('btn-reset').onclick = () => {
+        // 清空屏幕
+        if (ctx) {
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(5, 5, 512 - 10, 256 - 10);
+            screenTex.needsUpdate = true;
+        }
+        
+        // 移除所有电子
+        totalHits = 0;
+        electrons.forEach(e => scene.remove(e));
+        electrons.length = 0;
+        
+        // 重置为暂停状态
+        isRunning = false;
+        document.getElementById('btn-toggle').textContent = '▶ 开始模拟';
+        document.getElementById('stats').innerHTML = `电子总数: ${totalHits}<br>德布罗意波长: ${electronWavelength.toFixed(2)} Å<br><span style="font-size:12px; color:#aaa">状态: 已暂停</span>`;
+    };
+    
+    // 缝间距调节
+    document.getElementById('slit-gap-slider').addEventListener('input', function(e) {
+        SLIT_GAP = parseFloat(e.target.value);
+        document.getElementById('slit-gap-value').textContent = SLIT_GAP.toFixed(1);
+        createDoubleSlit();
+    });
+    
+    // 双缝-屏幕距离调节
+    document.getElementById('screen-distance-slider').addEventListener('input', function(e) {
+        SCREEN_DISTANCE = parseFloat(e.target.value);
+        document.getElementById('screen-distance-value').textContent = SCREEN_DISTANCE;
+        updateScreenPosition();
+    });
+    
+    // 电子速度调节
+    document.getElementById('electron-speed-slider').addEventListener('input', function(e) {
+        electronSpeed = parseFloat(e.target.value);
+        speed = electronSpeed;
+        document.getElementById('electron-speed-value').textContent = electronSpeed.toFixed(1);
+        updateWavelengthDisplay();
+    });
+    
+    // 模式选择
+    document.getElementById('mode-select').addEventListener('change', function(e) {
+        mode = e.target.value;
+        if (mode === 'single') {
+            spawnRate = 1;
+            speed = 1.5;
+            electronSpeed = 1.5;
+            singleModeInterval = 500;
+        } else {
+            spawnRate = 10;
+            speed = 2.0;
+            electronSpeed = 2.0;
+        }
+        
+        updateWavelengthDisplay();
+        
+        // 重置场景
+        document.getElementById('btn-reset').click();
+    });
+    
+    // 初始调整尺寸
+    handleResize();
+    
+    // 初始状态设为暂停并更新波长显示
+    updateWavelengthDisplay();
+    
+    animate();
+</script>
+</body>
+</html>

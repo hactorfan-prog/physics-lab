@@ -1,0 +1,1371 @@
+<!DOCTYPE html>  
+<html lang="zh-CN">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>二维动量守恒模拟器</title>  
+    <style>  
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {  
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;  
+            background-color: #f8f9fa;  
+            margin: 0;  
+            padding: 20px;  
+            display: flex;  
+            justify-content: center;  
+            min-height: 100vh;  
+            box-sizing: border-box;  
+            color: #212529;  
+        }  
+
+        .container {  
+            display: flex;  
+            gap: 20px;  
+            background: white;  
+            padding: 20px;  
+            border-radius: 12px;  
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);  
+            max-width: 1400px;  
+            width: 100%;  
+            height: calc(100vh - 40px);  
+            flex-direction: column; 
+        }  
+
+        /* 优化后的标题栏样式 */
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;  
+            padding: 12px 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #eef2ff;
+            background: linear-gradient(135deg, #faf5ff 0%, #f0f9ff 100%);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .main-title {
+            font-size: 22px; 
+            font-weight: 700;
+            color: #1e293b; 
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .main-title::before {
+            content: "🔬";
+            font-size: 24px;
+            line-height: 1;
+        }
+        .author-text {
+            font-size: 14px; 
+            color: #64748b; 
+            font-weight: 500;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }  
+
+        .content-wrapper {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            height: calc(100% - 45px);
+            overflow: hidden;
+        }  
+
+        .canvas-wrapper {  
+            flex: 0 0 60%; 
+            max-width: 700px; 
+            display: flex;  
+            flex-direction: column;  
+            gap: 12px;  
+            height: 100%;  
+            box-sizing: border-box;  
+        }  
+
+        canvas {  
+            background-color: #fff;  
+            border: 1px solid #e2e8f0;  
+            border-radius: 8px;  
+            background-image:   
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),  
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);  
+            background-size: 50px 50px;  
+            flex: 1;  
+            width: 100%;
+            height: auto;
+            max-height: calc(100% - 50px);
+        }  
+
+        .canvas-controls {  
+            display: flex;  
+            gap: 8px;  
+            padding: 8px;  
+            background: #f8fafc;  
+            border-radius: 8px;  
+            border: 1px solid #e2e8f0;
+        }  
+
+        .canvas-controls button {  
+            flex: 1;  
+            padding: 9px 10px;  
+            border: none;  
+            border-radius: 6px;  
+            font-weight: 600;  
+            cursor: pointer;  
+            transition: 0.2s;  
+            display: flex;  
+            align-items: center;  
+            justify-content: center;  
+            gap: 6px;  
+            font-size: 14px; 
+        }  
+
+        #btn-setup { background: #4f46e5; color: white; }  
+        #btn-setup:hover { background: #4338ca; }  
+        #btn-start { background: #10b981; color: white; }  
+        #btn-start:hover { background: #059669; }  
+        #btn-reset { background: #64748b; color: white; }  
+        #btn-reset:hover { background: #475569; }  
+
+        .overlay-msg {  
+            position: absolute;  
+            top: 50%; left: 50%;  
+            transform: translate(-50%, -50%);  
+            background: rgba(79, 70, 229, 0.9);  
+            padding: 12px 20px;  
+            border-radius: 8px;  
+            border: 1px solid #4338ca;  
+            font-weight: 600;  
+            color: white;  
+            display: none;  
+            pointer-events: none;  
+            z-index: 10;  
+            text-align: center;  
+            max-width: 80%;  
+            font-size: 15px; 
+        }  
+
+        .control-panel {  
+            flex: 1;  
+            min-width: 400px; 
+            max-width: 500px; 
+            display: flex;  
+            flex-direction: column;  
+            gap: 8px;  
+            overflow-y: auto;  
+            height: 100%;  
+            box-sizing: border-box;  
+            padding-right: 5px;
+        }  
+
+        .status-panel {  
+            background: #f8fafc;  
+            padding: 7px 10px;  
+            border-radius: 6px;  
+            border: 1px solid #e2e8f0;  
+            display: flex;  
+            justify-content: space-between;  
+            align-items: center;
+        }  
+
+        .status-info {  
+            display: flex;  
+            align-items: center;  
+            gap: 7px;
+        }  
+
+        .status-indicator {  
+            display: inline-block;  
+            width: 8px;  
+            height: 8px;  
+            border-radius: 50%;  
+            margin-right: 5px;
+        }  
+
+        .status-ready { background-color: #10b981; }  
+        .status-running { background-color: #f59e0b; animation: pulse 1s infinite; }  
+        .status-paused { background-color: #64748b; }  
+        .status-collided { background-color: #ef4444; }  
+
+        @keyframes pulse {  
+            0% { opacity: 1; }  
+            50% { opacity: 0.5; }  
+            100% { opacity: 1; }  
+        }  
+
+        .stats-info {  
+            font-size: 13px; 
+            color: #343a40; 
+        }  
+
+        .input-section {  
+            display: grid;  
+            grid-template-columns: 1fr 1fr;  
+            gap: 8px;  
+            max-width: 100%;
+        }  
+
+        .ball-input-card {  
+            background: #f8fafc;  
+            padding: 9px;  
+            border-radius: 6px;  
+            border: 1px solid #e2e8f0;  
+            border-left: 3px solid;  
+            width: 100%;
+            box-sizing: border-box;
+        }  
+
+        .ball-input-card.ball-a { border-left-color: #ef4444; }  
+        .ball-input-card.ball-b { border-left-color: #3b82f6; }  
+
+        .ball-header {  
+            font-weight: 600;  
+            padding-bottom: 5px;  
+            margin-bottom: 5px;  
+            border-bottom: 1px solid #e2e8f0;  
+            display: flex;  
+            align-items: center;  
+            gap: 5px;  
+            font-size: 14px; 
+        }  
+        .ball-a .ball-header { color: #b01a1a; } 
+        .ball-b .ball-header { color: #1741a0; }  
+
+        .input-row {  
+            display: flex;  
+            gap: 7px;  
+            margin-bottom: 5px;  
+            align-items: center;
+            width: 100%;
+        }  
+
+        .input-row label {  
+            flex: 0 0 45px;  
+            font-size: 12px; 
+            color: #343a40; 
+        }  
+
+        .input-row input {  
+            flex: 1;  
+            padding: 5px 7px;  
+            border: 1px solid #cbd5e1;  
+            border-radius: 4px;  
+            font-size: 13px; 
+            color: #212529;
+            max-width: 100px;
+        }  
+
+        .input-row .value-display {  
+            flex: 0 0 35px;  
+            font-size: 11px; 
+            color: #495057; 
+            text-align: right;
+        }  
+
+        .radius-display {  
+            font-size: 11px; 
+            color: #495057; 
+            text-align: center;  
+            margin-top: 3px;
+        }  
+
+        .env-panel {  
+            background: #f8fafc;  
+            padding: 7px 9px;  
+            border-radius: 6px;  
+            border: 1px solid #e2e8f0;  
+            margin-bottom: 4px;
+        }  
+
+        .env-header {  
+            font-weight: 600;  
+            color: #212529; 
+            margin-bottom: 4px;  
+            display: flex;  
+            align-items: center;  
+            gap: 5px;  
+            font-size: 13px; 
+        }  
+
+        .slider-container {  
+            display: flex;  
+            align-items: center;  
+            gap: 7px;  
+            margin-bottom: 3px;
+        }  
+
+        .slider-value {  
+            font-weight: 600;  
+            color: #4338ca; 
+            font-size: 13px; 
+            min-width: 30px;
+        }  
+
+        .slider-container input[type="range"] {  
+            flex: 1;  
+            height: 4px;
+        }  
+
+        .slider-labels {  
+            display: flex;  
+            justify-content: space-between;  
+            font-size: 11px; 
+            color: #495057; 
+            margin-top: 2px;
+        }  
+
+        .momentum-panel {  
+            flex: 1;  
+            display: flex;  
+            flex-direction: column;  
+            min-height: 0;
+        }  
+
+        .momentum-header {  
+            font-weight: 600;  
+            color: #212529; 
+            margin-bottom: 7px;  
+            display: flex;  
+            align-items: center;  
+            gap: 5px;  
+            font-size: 14px; 
+            padding-bottom: 5px;  
+            border-bottom: 1px solid #e2e8f0;
+        }  
+
+        .momentum-content {  
+            flex: 1;  
+            overflow-y: auto;  
+            padding-right: 5px;
+        }  
+
+        .phase-card {  
+            margin-bottom: 7px;  
+            border-radius: 6px;  
+            overflow: hidden;  
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }  
+
+        .phase-header {  
+            padding: 5px 9px;  
+            font-weight: 600;  
+            font-size: 13px; 
+            display: flex;  
+            align-items: center;  
+            gap: 5px;
+        }  
+
+        .phase-pre .phase-header {  
+            background: #f1f5f9;  
+            color: #212529; 
+        }  
+
+        .phase-post .phase-header {  
+            background: #fef2f2;  
+            color: #212529;  
+            margin-top: 4px;
+        }  
+
+        .phase-content {  
+            padding: 7px;  
+            background: #ffffff;
+        }  
+
+        .ball-row, .total-row {  
+            display: grid;  
+            grid-template-columns: 80px repeat(3, 1fr);  
+            align-items: center;  
+            padding: 6px 0;  
+            border-bottom: 1px solid #f1f5f9;
+        }  
+
+        .ball-label, .total-label {  
+            font-weight: 600;  
+            font-size: 13px; 
+            display: flex;  
+            align-items: center;  
+            gap: 5px;
+        }  
+
+        .ball-label.a { color: #b01a1a; } 
+        .ball-label.b { color: #1741a0; }  
+        .total-label { color: #4338ca; }  
+
+        .data-item {  
+            text-align: right;  
+            padding: 0 4px; 
+        }  
+
+        .data-label {  
+            font-size: 11px; 
+            color: #495057; 
+            margin-bottom: 2px;  
+            white-space: nowrap;
+        }  
+
+        .data-value {  
+            font-weight: 600;  
+            font-size: 13px; 
+            color: #1a1a1a; 
+            font-family: 'Consolas', 'Monaco', monospace;
+        }  
+
+        .system-total {  
+            margin-top: 4px;  
+            padding: 4px 0 0 0;  
+            background: transparent;  
+            border-left: none;
+        }  
+
+        .energy-loss {  
+            font-size: 12px; 
+            padding: 3px 8px;  
+            border-radius: 8px;  
+            margin-top: 5px;  
+            display: inline-block;  
+            text-align: center;  
+            width: 100%;  
+            box-sizing: border-box;
+        }  
+
+        .loss-zero { background: rgba(16, 185, 129, 0.1); color: #059669; }  
+        .loss-low { background: rgba(245, 158, 11, 0.1); color: #d97706; }  
+        .loss-high { background: rgba(239, 68, 68, 0.1); color: #b01a1a; }  
+
+        .axis-label {  
+            font-size: 11px; 
+            color: #495057; 
+            position: absolute;  
+            background: rgba(255,255,255,0.9);  
+            padding: 1px 3px;  
+            border-radius: 2px;
+        }  
+
+        .modal {  
+            display: none;  
+            position: fixed;  
+            z-index: 1000;  
+            left: 0;  
+            top: 0;  
+            width: 100%;  
+            height: 100%;  
+            background-color: rgba(0,0,0,0.3);
+        }  
+
+        .modal-content {  
+            background-color: white;  
+            margin: 15% auto;  
+            padding: 20px;  
+            border-radius: 8px;  
+            width: 380px;  
+            text-align: center;  
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);  
+            border-top: 3px solid #4f46e5;
+        }  
+
+        .modal-header {  
+            font-size: 17px; 
+            font-weight: 600;  
+            color: #4338ca;  
+            margin-bottom: 12px;  
+            display: flex;  
+            align-items: center;  
+            justify-content: center;  
+            gap: 8px;
+        }  
+
+        .modal-body {  
+            font-size: 14px; 
+            color: #495057; 
+            margin-bottom: 15px;  
+            line-height: 1.4;
+        }  
+
+        .modal-footer {  
+            display: flex;  
+            justify-content: center;  
+            gap: 12px;
+        }  
+
+        .modal-btn {  
+            padding: 8px 20px;  
+            border: none;  
+            border-radius: 4px;  
+            font-weight: 600;  
+            cursor: pointer;  
+            transition: 0.2s;  
+            font-size: 14px;
+        }  
+
+        .modal-confirm {  
+            background: #4f46e5;  
+            color: white;
+        }  
+
+        .modal-confirm:hover {  
+            background: #4338ca;
+        }  
+
+        .empty-state {  
+            text-align: center;  
+            padding: 30px 20px;  
+            color: #495057; 
+            height: 100%;  
+            display: flex;  
+            flex-direction: column;  
+            justify-content: center;  
+            align-items: center;
+        }  
+
+        .empty-state .icon {  
+            font-size: 36px;  
+            margin-bottom: 8px;  
+            opacity: 0.5;
+        }  
+    </style>  
+</head>  
+<body>  
+  
+<div class="container">  
+    <div class="title-row">
+        <div class="main-title">二维碰撞中动量守恒现象仿真</div>
+        <div class="author-text">作者:xatu_bai</div>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="canvas-wrapper">  
+            <div style="position: relative; flex: 1; display: flex; width: 100%;">  
+                <canvas id="simCanvas" width="100%" height="0"></canvas>  
+                <div id="errorMsg" class="overlay-msg">⚠️ 轨迹无交点，无法发生碰撞</div>  
+                <div id="simStatusMsg" class="overlay-msg">✅ 碰撞已完成</div>  
+                <div class="axis-label" style="bottom: 10px; left: 10px;">O (0,0)</div>  
+                <div class="axis-label" style="bottom: 10px; right: 10px;">X +</div>  
+                <div class="axis-label" style="top: 10px; left: 10px;">Y +</div>  
+            </div>  
+
+            <div class="canvas-controls">  
+                <button id="btn-setup">📍 更新小球位置</button>  
+                <button id="btn-start">🚀 开始/暂停</button>  
+                <button id="btn-reset">🔄 重置</button>  
+            </div>  
+        </div>  
+
+        <div class="control-panel">  
+            <div class="status-panel">  
+                <div class="status-info">  
+                    <span class="status-indicator status-ready" id="status-indicator"></span>  
+                    <span id="sim-status" style="font-weight: 600; font-size: 13px;">准备就绪</span>  
+                </div>  
+                <div class="stats-info">  
+                    碰撞: <span id="collision-count">0</span> 次 |   
+                    小球: <span id="ball-status">2/2</span>  
+                </div>  
+            </div>  
+
+            <div class="input-section">  
+                <div class="ball-input-card ball-a">  
+                    <div class="ball-header">🔴 小球 A</div>  
+                    <div class="input-row">  
+                        <label>质量 m</label>  
+                        <input type="number" id="m1" value="4" min="0.1" step="0.1">  
+                        <div class="value-display">kg</div>  
+                    </div>  
+                    <div class="input-row">  
+                        <label>速度 v</label>  
+                        <input type="number" id="v1" value="5" min="0" step="0.1">  
+                        <div class="value-display">m/s</div>  
+                    </div>  
+                    <div class="input-row">  
+                        <label>角度 θ</label>  
+                        <input type="number" id="deg1" value="30" min="0" max="360" step="1">  
+                        <div class="value-display">°</div>  
+                    </div>  
+                    <div class="radius-display">  
+                        半径: <span id="r1_disp">--</span> px  
+                    </div>  
+                </div>  
+
+                <div class="ball-input-card ball-b">  
+                    <div class="ball-header">🔵 小球 B</div>  
+                    <div class="input-row">  
+                        <label>质量 m</label>  
+                        <input type="number" id="m2" value="2" min="0.1" step="0.1">  
+                        <div class="value-display">kg</div>  
+                    </div>  
+                    <div class="input-row">  
+                        <label>速度 v</label>  
+                        <input type="number" id="v2" value="6" min="0" step="0.1">  
+                        <div class="value-display">m/s</div>  
+                    </div>  
+                    <div class="input-row">  
+                        <label>角度 θ</label>  
+                        <input type="number" id="deg2" value="150" min="0" max="360" step="1">  
+                        <div class="value-display">°</div>  
+                    </div>  
+                    <div class="radius-display">  
+                        半径: <span id="r2_disp">--</span> px  
+                    </div>  
+                </div>  
+            </div>  
+
+            <div class="env-panel">  
+                <div class="env-header">⚙️ 恢复系数 (e)</div>  
+                <div class="slider-container">  
+                    <div class="slider-value" id="elasticity-val">1.00</div>  
+                    <input type="range" id="elasticity" min="0" max="1" step="0.01" value="1">  
+                    <div style="font-size: 11px; color: #495057; min-width: 25px;">  
+                        <span style="color:#495057">0.00</span>  
+                    </div>  
+                </div>  
+                <div class="slider-labels">  
+                    <span style="color:#495057">完全非弹性</span>  
+                    <span style="color:#4338ca">完全弹性</span>  
+                </div>  
+            </div>  
+
+            <div class="momentum-panel">  
+                <div class="momentum-header">📊 动量与能量数据</div>  
+                <div class="momentum-content" id="stats-container">  
+                    <div class="empty-state" id="empty-state">  
+                        <div class="icon">📈</div>  
+                        <div>请点击"更新小球位置"开始仿真</div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>
+</div>  
+
+<div id="noCollisionModal" class="modal">  
+    <div class="modal-content">  
+        <div class="modal-header">  
+            ⚠️ 无法碰撞  
+        </div>  
+        <div class="modal-body">  
+            当前参数设置下，两个小球轨迹没有交点，无法发生碰撞。<br>  
+            请调整小球的速度或角度后重试。  
+        </div>  
+        <div class="modal-footer">  
+            <button id="modalConfirmBtn" class="modal-btn modal-confirm">确定</button>  
+        </div>  
+    </div>  
+</div>  
+  
+<script>  
+    const canvas = document.getElementById('simCanvas');  
+    const ctx = canvas.getContext('2d');  
+    const canvasWrapper = document.querySelector('.canvas-wrapper');  
+    canvas.height = canvasWrapper.offsetHeight - document.querySelector('.canvas-controls').offsetHeight - 20;  
+    canvas.width = canvasWrapper.offsetWidth;  
+    let width = canvas.width;  
+    let height = canvas.height;  
+    let centerX = width / 2;  
+    let centerY = height / 2;  
+
+    let balls = [];  
+    let animationId = null;  
+    let isRunning = false;  
+    let collisionDetected = false;  
+    let collisionCount = 0;  
+    let ballsInBounds = 2;  
+    let preCollisionData = null;  
+    let postCollisionData = null;  
+    let edgePositions = new Map();  
+    let showPostCollisionData = false;  
+
+    function createBallGradient(ctx, x, y, r, isBallA) {  
+        const gradient = ctx.createRadialGradient(  
+            x - r/4, y - r/4, 0,  
+            x, y, r  
+        );  
+        
+        if (isBallA) {  
+            gradient.addColorStop(0, '#fecaca');  
+            gradient.addColorStop(0.6, '#ef4444');  
+            gradient.addColorStop(1, '#b91c1c');  
+        } else {  
+            gradient.addColorStop(0, '#bfdbfe');  
+            gradient.addColorStop(0.6, '#3b82f6');  
+            gradient.addColorStop(1, '#1d4ed8');  
+        }  
+        
+        return gradient;  
+    }  
+
+    function createHighlightGradient(ctx, x, y, r) {  
+        const highlight = ctx.createRadialGradient(  
+            x - r/2, y - r/2, 0,  
+            x - r/2, y - r/2, r/2  
+        );  
+        highlight.addColorStop(0, 'rgba(255, 255, 255, 0.7)');  
+        highlight.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');  
+        highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');  
+        return highlight;  
+    }  
+
+    class Ball {  
+        constructor(name, m, v, angle, color) {  
+            this.name = name;  
+            this.m = m;  
+            this.r = Math.sqrt(m) * 8 + 12;  
+            this.color = color;  
+            this.isBallA = name === "A";  
+              
+            const rad = angle * (Math.PI / 180);  
+            this.vx = v * Math.cos(rad);  
+            this.vy = v * Math.sin(rad);  
+              
+            this.x = centerX;  
+            this.y = centerY;  
+            this.isAtEdge = false;  
+            this.edgeX = null;  
+            this.edgeY = null;  
+              
+            this.initialVx = this.vx;  
+            this.initialVy = this.vy;  
+            this.initialAngle = angle;  
+            this.initialV = v;  
+              
+            this.preCollision = { px: 0, py: 0, ke: 0 };  
+            this.postCollision = { px: 0, py: 0, ke: 0 };  
+        }  
+
+        draw() {  
+            let drawX = this.x;  
+            let drawY = this.y;  
+            let drawRadius = this.r;  
+              
+            if (this.isAtEdge && this.edgeX !== null && this.edgeY !== null) {  
+                drawX = this.edgeX;  
+                drawY = this.edgeY;  
+                ctx.globalAlpha = 0.7;  
+            }  
+            
+            const ballGradient = createBallGradient(ctx, drawX, drawY, drawRadius, this.isBallA);  
+            
+            ctx.beginPath();  
+            ctx.arc(drawX, drawY, drawRadius, 0, Math.PI * 2);  
+            ctx.fillStyle = ballGradient;  
+            ctx.fill();  
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';  
+            ctx.lineWidth = 1;  
+            ctx.stroke();  
+            
+            const highlightGradient = createHighlightGradient(ctx, drawX, drawY, drawRadius);  
+            ctx.beginPath();  
+            ctx.arc(drawX - drawRadius/3, drawY - drawRadius/3, drawRadius/3, 0, Math.PI * 2);  
+            ctx.fillStyle = highlightGradient;  
+            ctx.fill();  
+
+            ctx.fillStyle = this.isAtEdge ? "#495057" : "#fff";  
+            ctx.textAlign = "center";  
+            ctx.textBaseline = "middle";  
+            ctx.font = "600 12px Arial"; 
+            ctx.fillText(`${this.name}:${this.m}kg`, drawX, drawY);  
+
+            if (!this.isAtEdge) {  
+                this.drawVector();  
+            } else if (this.edgeX !== null && this.edgeY !== null) {  
+                ctx.strokeStyle = "#495057";  
+                ctx.lineWidth = 1;  
+                ctx.beginPath();  
+                ctx.moveTo(this.edgeX - 5, this.edgeY);  
+                ctx.lineTo(this.edgeX + 5, this.edgeY);  
+                ctx.moveTo(this.edgeX, this.edgeY - 5);  
+                ctx.lineTo(this.edgeX, this.edgeY + 5);  
+                ctx.stroke();  
+            }  
+            
+            ctx.globalAlpha = 1.0;  
+        }  
+
+        drawVector() {  
+            const scale = 6;  
+            const toX = this.x + this.vx * scale;  
+            const toY = this.y + this.vy * scale;  
+              
+            ctx.beginPath();  
+            ctx.moveTo(this.x, this.y);  
+            ctx.lineTo(toX, toY);  
+            ctx.strokeStyle = "rgba(79, 70, 229, 0.7)"; 
+            ctx.lineWidth = 1.3;  
+            ctx.stroke();  
+
+            const angle = Math.atan2(this.vy, this.vx);  
+            const head = 4;  
+            ctx.beginPath();  
+            ctx.moveTo(toX, toY);  
+            ctx.lineTo(toX - head * Math.cos(angle - Math.PI/6), toY - head * Math.sin(angle - Math.PI/6));  
+            ctx.lineTo(toX - head * Math.cos(angle + Math.PI/6), toY - head * Math.sin(angle + Math.PI/6));  
+            ctx.fillStyle = "rgba(79, 70, 229, 0.7)";  
+            ctx.fill();  
+        }  
+
+        update() {  
+            if (this.isAtEdge) return;  
+              
+            this.x += this.vx;  
+            this.y += this.vy;  
+              
+            const minX = this.r;
+            const maxX = width - this.r;
+            const minY = this.r;
+            const maxY = height - this.r;
+            
+            let willHitEdge = false;  
+            let hitX = this.x;  
+            let hitY = this.y;  
+              
+            if (this.x < minX) {  
+                willHitEdge = true;  
+                hitX = minX;  
+            } else if (this.x > maxX) {  
+                willHitEdge = true;  
+                hitX = maxX;  
+            }  
+              
+            if (this.y < minY) {  
+                willHitEdge = true;  
+                hitY = minY;  
+            } else if (this.y > maxY) {  
+                willHitEdge = true;  
+                hitY = maxY;  
+            }  
+              
+            if (willHitEdge) {  
+                this.isAtEdge = true;  
+                this.edgeX = hitX;  
+                this.edgeY = hitY;  
+                edgePositions.set(this.name, { x: hitX, y: hitY });  
+                ballsInBounds--;  
+                updateBallStatus();  
+                  
+                this.vx = 0;  
+                this.vy = 0;  
+            }  
+        }  
+
+        getPx() { return this.m * this.vx; }  
+        getPy() { return this.m * this.vy; }  
+        getV() { return Math.sqrt(this.vx**2 + this.vy**2); }  
+        getKE() { return 0.5 * this.m * (this.vx**2 + this.vy**2); }  
+
+        recordPreCollisionData() {  
+            this.preCollision.px = this.getPx();  
+            this.preCollision.py = this.getPy();  
+            this.preCollision.ke = this.getKE();  
+        }  
+
+        recordPostCollisionData() {  
+            this.postCollision.px = this.getPx();  
+            this.postCollision.py = this.getPy();  
+            this.postCollision.ke = this.getKE();  
+        }  
+
+        reset() {  
+            this.x = centerX;
+            this.y = centerY;
+            this.vx = this.initialVx;  
+            this.vy = this.initialVy;  
+            this.isAtEdge = false;  
+            this.edgeX = null;  
+            this.edgeY = null;  
+            this.preCollision = { px: 0, py: 0, ke: 0 };  
+            this.postCollision = { px: 0, py: 0, ke: 0 };  
+        }  
+    }  
+
+    function checkCollisionPossible(b1, b2) {  
+        const vx_rel = b2.vx - b1.vx;  
+        const vy_rel = b2.vy - b1.vy;  
+        const dx_rel = b2.x - b1.x;  
+        const dy_rel = b2.y - b1.y;  
+
+        const relSpeed = Math.sqrt(vx_rel*vx_rel + vy_rel*vy_rel);  
+        if (relSpeed < 0.01) {  
+            return false;  
+        }  
+
+        const a = vx_rel*vx_rel + vy_rel*vy_rel;  
+        const b = 2*(dx_rel*vx_rel + dy_rel*vy_rel);  
+        const c = dx_rel*dx_rel + dy_rel*dy_rel - (b1.r + b2.r)*(b1.r + b2.r);  
+        const discriminant = b*b - 4*a*c;  
+
+        if (discriminant < 0) {  
+            return false;  
+        }  
+
+        const t1 = (-b + Math.sqrt(discriminant)) / (2*a);  
+        const t2 = (-b - Math.sqrt(discriminant)) / (2*a);  
+        const validTimes = [t1, t2].filter(t => {  
+            if (t <= 0) return false;  
+
+            const meetX1 = b1.x + b1.vx * t;  
+            const meetY1 = b1.y + b1.vy * t;  
+            const meetX2 = b2.x + b2.vx * t;  
+            const meetY2 = b2.y + b2.vy * t;  
+
+            const inBound1 = meetX1 > b1.r && meetX1 < width - b1.r && meetY1 > b1.r && meetY1 < height - b1.r;  
+            const inBound2 = meetX2 > b2.r && meetX2 < width - b2.r && meetY2 > b2.r && meetY2 < height - b2.r;  
+
+            return inBound1 && inBound2;  
+        });  
+
+        return validTimes.length > 0;  
+    }  
+
+    function setupPositions(b1, b2) {  
+        const maxOffset = Math.min(width * 0.4, height * 0.4);  
+        b1.x = centerX - maxOffset;  
+        b1.y = centerY;  
+        b2.x = centerX + maxOffset;  
+        b2.y = centerY;  
+
+        return checkCollisionPossible(b1, b2);  
+    }  
+
+    function initBalls(shouldStart = false) {  
+        if (animationId) cancelAnimationFrame(animationId);  
+        document.getElementById('errorMsg').style.display = 'none';  
+        document.getElementById('simStatusMsg').style.display = 'none';  
+
+        const m1 = parseFloat(document.getElementById('m1').value);  
+        const v1 = parseFloat(document.getElementById('v1').value);  
+        const deg1 = parseFloat(document.getElementById('deg1').value);  
+          
+        const m2 = parseFloat(document.getElementById('m2').value);  
+        const v2 = parseFloat(document.getElementById('v2').value);  
+        const deg2 = parseFloat(document.getElementById('deg2').value);  
+
+        const b1 = new Ball("A", m1, v1, deg1, "#ef4444");  
+        const b2 = new Ball("B", m2, v2, deg2, "#3b82f6");  
+
+        document.getElementById('r1_disp').textContent = b1.r.toFixed(0);  
+        document.getElementById('r2_disp').textContent = b2.r.toFixed(0);  
+
+        const canCollide = setupPositions(b1, b2);  
+        
+        if (!canCollide) {  
+            document.getElementById('noCollisionModal').style.display = 'block';  
+            return;  
+        }  
+
+        balls = [b1, b2];  
+        collisionDetected = false;  
+        preCollisionData = null;  
+        postCollisionData = null;  
+        ballsInBounds = 2;  
+        edgePositions.clear();  
+        showPostCollisionData = false;  
+        updateBallStatus();  
+
+        if (!shouldStart) {  
+            isRunning = false;  
+            updateStatus("准备就绪", "status-ready");  
+            updateDataCards();  
+            drawGrid();  
+            balls.forEach(b => b.draw());  
+        } else {  
+            isRunning = true;  
+            updateStatus("运行中", "status-running");  
+            animate();  
+        }  
+    }  
+
+    function resolveCollision() {  
+        const b1 = balls[0];  
+        const b2 = balls[1];  
+        const dx = b2.x - b1.x;  
+        const dy = b2.y - b1.y;  
+        const dist = Math.sqrt(dx*dx + dy*dy);  
+
+        if (dist < b1.r + b2.r && !collisionDetected) {  
+            collisionDetected = true;  
+            collisionCount++;  
+            document.getElementById('collision-count').textContent = collisionCount;  
+
+            balls.forEach(b => b.recordPreCollisionData());  
+            preCollisionData = {  
+                a: { px: b1.getPx(), py: b1.getPy(), ke: b1.getKE() },  
+                b: { px: b2.getPx(), py: b2.getPy(), ke: b2.getKE() }  
+            };  
+            const preTotalKE = preCollisionData.a.ke + preCollisionData.b.ke;
+
+            const overlap = (b1.r + b2.r - dist) / 2;  
+            const nx = dx / dist;  
+            const ny = dy / dist;  
+            b1.x -= nx * overlap; b1.y -= ny * overlap;  
+            b2.x += nx * overlap; b2.y += ny * overlap;  
+
+            const e = parseFloat(document.getElementById('elasticity').value);  
+              
+            const v1n = nx * b1.vx + ny * b1.vy;  
+            const v1t = -ny * b1.vx + nx * b1.vy;  
+            const v2n = nx * b2.vx + ny * b2.vy;  
+            const v2t = -ny * b2.vx + nx * b2.vy;  
+
+            const m1 = b1.m, m2 = b2.m;  
+            const v1nF = ((m1 - e*m2)*v1n + (1+e)*m2*v2n) / (m1+m2);  
+            const v2nF = ((m2 - e*m1)*v2n + (1+e)*m1*v1n) / (m1+m2);  
+
+            // 修复：完全非弹性碰撞（e=0）时，两球速度相同
+            if (Math.abs(e - 0) < 0.001) {
+                // 完全非弹性碰撞后，两球共速（动量守恒）
+                const totalMass = m1 + m2;
+                const finalVx = (m1*b1.vx + m2*b2.vx) / totalMass;
+                const finalVy = (m1*b1.vy + m2*b2.vy) / totalMass;
+                b1.vx = finalVx;
+                b1.vy = finalVy;
+                b2.vx = finalVx;
+                b2.vy = finalVy;
+            } else {
+                // 非完全非弹性碰撞，正常计算
+                b1.vx = v1nF * nx - v1t * ny;  
+                b1.vy = v1nF * ny + v1t * nx;  
+                b2.vx = v2nF * nx - v2t * ny;  
+                b2.vy = v2nF * ny + v2t * nx;  
+            }  
+
+            balls.forEach(b => b.recordPostCollisionData());  
+            let postTotalKE = b1.getKE() + b2.getKE();
+            if (Math.abs(e - 1) < 0.001) {
+                const keRatio = preTotalKE / postTotalKE;
+                b1.vx *= Math.sqrt(keRatio);
+                b1.vy *= Math.sqrt(keRatio);
+                b2.vx *= Math.sqrt(keRatio);
+                b2.vy *= Math.sqrt(keRatio);
+                balls.forEach(b => b.recordPostCollisionData());
+            }
+
+            postCollisionData = {  
+                a: { px: b1.getPx(), py: b1.getPy(), ke: b1.getKE() },  
+                b: { px: b2.getPx(), py: b2.getPy(), ke: b2.getKE() }  
+            };  
+
+            showPostCollisionData = true;  
+            updateDataCards();  
+
+            return true;  
+        }  
+        return false;  
+    }  
+
+    function updateDataCards() {  
+        if (!balls[0]) return;  
+        const b1 = balls[0];  
+        const b2 = balls[1];  
+
+        const fmt = (n) => n.toFixed(3);  
+          
+        const preTotalPx = (preCollisionData ? (preCollisionData.a.px + preCollisionData.b.px) : (b1.getPx() + b2.getPx()));  
+        const preTotalPy = (preCollisionData ? (preCollisionData.a.py + preCollisionData.b.py) : (b1.getPy() + b2.getPy()));  
+        const preTotalKE = (preCollisionData ? (preCollisionData.a.ke + preCollisionData.b.ke) : (b1.getKE() + b2.getKE()));  
+          
+        let html = `  
+            <div class="phase-card phase-pre">  
+                <div class="phase-header">  
+                    <span>📋 碰前数据</span>  
+                </div>  
+                <div class="phase-content">  
+                    <div class="ball-row">  
+                        <div class="ball-label a">🔴 小球 A</div>  
+                        <div class="data-item">  
+                            <div class="data-label">Px (X动量)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.a.px) : fmt(b1.getPx())}</div>  
+                        </div>  
+                        <div class="data-item">  
+                            <div class="data-label">Py (Y动量)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.a.py) : fmt(b1.getPy())}</div>  
+                        </div>  
+                        <div class="data-item">  
+                            <div class="data-label">动能 (J)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.a.ke) : fmt(b1.getKE())}</div>  
+                        </div>  
+                    </div>  
+                    <div class="ball-row">  
+                        <div class="ball-label b">🔵 小球 B</div>  
+                        <div class="data-item">  
+                            <div class="data-label">Px (X动量)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.b.px) : fmt(b2.getPx())}</div>  
+                        </div>  
+                        <div class="data-item">  
+                            <div class="data-label">Py (Y动量)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.b.py) : fmt(b2.getPy())}</div>  
+                        </div>  
+                        <div class="data-item">  
+                            <div class="data-label">动能 (J)</div>  
+                            <div class="data-value">${preCollisionData ? fmt(preCollisionData.b.ke) : fmt(b2.getKE())}</div>  
+                        </div>  
+                    </div>  
+                    <div class="system-total">  
+                        <div class="total-row">  
+                            <div class="total-label">📊 系统总量</div>  
+                            <div class="data-item">  
+                                <div class="data-label">X方向总动量</div>  
+                                <div class="data-value">${fmt(preTotalPx)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">Y方向总动量</div>  
+                                <div class="data-value">${fmt(preTotalPy)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">系统总动能</div>  
+                                <div class="data-value">${fmt(preTotalKE)}</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        `;  
+
+        if (showPostCollisionData && postCollisionData) {  
+            const postTotalPx = postCollisionData.a.px + postCollisionData.b.px;  
+            const postTotalPy = postCollisionData.a.py + postCollisionData.b.py;  
+            const postTotalKE = postCollisionData.a.ke + postCollisionData.b.ke;  
+            const energyLoss = ((preTotalKE - postTotalKE) / preTotalKE * 100).toFixed(2);  
+            const lossClass = energyLoss == 0 ? 'loss-zero' : (energyLoss < 10 ? 'loss-low' : 'loss-high');  
+              
+            html += `  
+                <div class="phase-card phase-post">  
+                    <div class="phase-header">  
+                        <span>💥 碰后数据</span>  
+                    </div>  
+                    <div class="phase-content">  
+                        <div class="ball-row">  
+                            <div class="ball-label a">🔴 小球 A</div>  
+                            <div class="data-item">  
+                                <div class="data-label">Px (X动量)</div>  
+                                <div class="data-value">${fmt(postCollisionData.a.px)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">Py (Y动量)</div>  
+                                <div class="data-value">${fmt(postCollisionData.a.py)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">动能 (J)</div>  
+                                <div class="data-value">${fmt(postCollisionData.a.ke)}</div>  
+                            </div>  
+                        </div>  
+                        <div class="ball-row">  
+                            <div class="ball-label b">🔵 小球 B</div>  
+                            <div class="data-item">  
+                                <div class="data-label">Px (X动量)</div>  
+                                <div class="data-value">${fmt(postCollisionData.b.px)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">Py (Y动量)</div>  
+                                <div class="data-value">${fmt(postCollisionData.b.py)}</div>  
+                            </div>  
+                            <div class="data-item">  
+                                <div class="data-label">动能 (J)</div>  
+                                <div class="data-value">${fmt(postCollisionData.b.ke)}</div>  
+                            </div>  
+                        </div>  
+                        <div class="system-total">  
+                            <div class="total-row">  
+                                <div class="total-label">📊 系统总量</div>  
+                                <div class="data-item">  
+                                    <div class="data-label">X方向总动量</div>  
+                                    <div class="data-value">${fmt(postTotalPx)}</div>  
+                                </div>  
+                                <div class="data-item">  
+                                    <div class="data-label">Y方向总动量</div>  
+                                    <div class="data-value">${fmt(postTotalPy)}</div>  
+                                </div>  
+                                <div class="data-item">  
+                                    <div class="data-label">系统总动能</div>  
+                                    <div class="data-value">${fmt(postTotalKE)}</div>  
+                                </div>  
+                            </div>  
+                            <div class="data-item" style="grid-column: 1 / span 4; margin-top: 5px;">  
+                                <span class="energy-loss ${lossClass}">能量损失: ${energyLoss}%</span>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            `;  
+        }  
+
+        document.getElementById('stats-container').innerHTML = html;  
+    }  
+
+    function updateBallStatus() {  
+        document.getElementById('ball-status').textContent = `${ballsInBounds}/2`;  
+    }  
+
+    function drawGrid() {  
+        ctx.clearRect(0, 0, width, height);  
+        
+        ctx.strokeStyle = "rgba(0,0,0,0.04)"; 
+        ctx.lineWidth = 0.5;  
+        
+        for (let x = 50; x < width; x += 50) {  
+            ctx.beginPath();  
+            ctx.moveTo(x, 0);  
+            ctx.lineTo(x, height);  
+            ctx.stroke();  
+        }  
+        
+        for (let y = 50; y < height; y += 50) {  
+            ctx.beginPath();  
+            ctx.moveTo(0, y);  
+            ctx.lineTo(width, y);  
+            ctx.stroke();  
+        }  
+
+        ctx.strokeStyle = "#d1d5db"; 
+        ctx.lineWidth = 1;  
+        ctx.beginPath();  
+        ctx.moveTo(centerX, 0);  
+        ctx.lineTo(centerX, height);  
+        ctx.moveTo(0, centerY);  
+        ctx.lineTo(width, centerY);  
+        ctx.stroke();  
+    }  
+
+    function updateStatus(statusText, statusClass) {  
+        const statusElem = document.getElementById('sim-status');  
+        const indicator = document.getElementById('status-indicator');  
+        
+        indicator.className = `status-indicator ${statusClass}`;  
+        statusElem.textContent = statusText;  
+    }  
+
+    function animate() {  
+        if (!isRunning) return;  
+
+        drawGrid();  
+
+        balls.forEach(b => b.update());  
+
+        if (!collisionDetected && !balls[0].isAtEdge && !balls[1].isAtEdge) {  
+            resolveCollision();  
+        }  
+
+        balls.forEach(b => b.draw());  
+
+        updateDataCards();  
+
+        if (ballsInBounds <= 0) {  
+            isRunning = false;  
+            document.getElementById('simStatusMsg').style.display = 'block';  
+            updateStatus("已暂停 - 所有小球到达边界", "status-paused");  
+            cancelAnimationFrame(animationId);  
+            return;  
+        }  
+        
+        if (isRunning) {  
+            animationId = requestAnimationFrame(animate);  
+        }  
+    }  
+
+    document.getElementById('btn-setup').onclick = () => {  
+        initBalls(false);  
+    };  
+
+    document.getElementById('btn-start').onclick = () => {  
+        if (!balls.length) {  
+            initBalls(true);  
+        } else if (ballsInBounds <= 0) {  
+            resetSimulation();  
+            initBalls(true);  
+        } else if (!isRunning) {  
+            isRunning = true;  
+            updateStatus("运行中", "status-running");  
+            document.getElementById('simStatusMsg').style.display = 'none';  
+            animate();  
+        } else {  
+            isRunning = false;  
+            updateStatus("已暂停", "status-paused");  
+            cancelAnimationFrame(animationId);  
+        }  
+    };  
+
+    function resetSimulation() {  
+        isRunning = false;  
+        collisionDetected = false;  
+        collisionCount = 0;  
+        ballsInBounds = 2;  
+        preCollisionData = null;  
+        postCollisionData = null;  
+        showPostCollisionData = false;  
+        if (animationId) cancelAnimationFrame(animationId);  
+        balls = [];  
+        drawGrid();  
+        document.getElementById('stats-container').innerHTML = `  
+            <div class="empty-state" id="empty-state">  
+                <div class="icon">📈</div>  
+                <div>请点击"更新小球位置"开始仿真</div>  
+            </div>  
+        `;  
+        document.getElementById('errorMsg').style.display = 'none';  
+        document.getElementById('simStatusMsg').style.display = 'none';  
+        document.getElementById('collision-count').textContent = "0";  
+        document.getElementById('ball-status').textContent = "2/2";  
+        updateStatus("已重置", "status-ready");  
+    }  
+
+    document.getElementById('btn-reset').onclick = resetSimulation;  
+
+    const elSlider = document.getElementById('elasticity');  
+    elSlider.oninput = () => {  
+        const eVal = parseFloat(elSlider.value).toFixed(2);  
+        document.getElementById('elasticity-val').textContent = eVal;  
+    };  
+
+    document.querySelectorAll('input[type="number"]').forEach(input => {  
+        input.addEventListener('input', () => {  
+            updateStatus("参数已更改，请点击更新位置", "status-paused");  
+        });  
+    });  
+
+    document.getElementById('modalConfirmBtn').onclick = () => {  
+        document.getElementById('noCollisionModal').style.display = 'none';  
+    };  
+
+    window.onclick = (event) => {  
+        const modal = document.getElementById('noCollisionModal');  
+        if (event.target === modal) {  
+            modal.style.display = 'none';  
+        }  
+    };  
+
+    window.addEventListener('resize', () => {  
+        canvas.width = canvasWrapper.offsetWidth;
+        canvas.height = canvasWrapper.offsetHeight - document.querySelector('.canvas-controls').offsetHeight - 20;
+        width = canvas.width;
+        height = canvas.height;
+        centerX = canvas.width / 2;
+        centerY = canvas.height / 2;
+        drawGrid();  
+        if (balls.length > 0) {  
+            balls.forEach(b => {
+                const maxOffset = Math.min(width * 0.4, height * 0.4);
+                if (b.isBallA) {
+                    b.x = centerX - maxOffset;
+                } else {
+                    b.x = centerX + maxOffset;
+                }
+                b.y = centerY;
+                b.draw();  
+            });  
+        }  
+    });  
+
+    drawGrid();  
+    updateStatus("准备就绪", "status-ready");  
+    document.getElementById('stats-container').innerHTML = `  
+        <div class="empty-state" id="empty-state">  
+            <div class="icon">📈</div>  
+            <div>请点击"更新小球位置"开始仿真</div>  
+        </div>  
+    `;  
+</script>  
+</body>  
+</html>

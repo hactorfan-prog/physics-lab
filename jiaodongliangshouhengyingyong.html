@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角动量守恒模拟 - 双旋翼直升机</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 微软雅黑, sans-serif; /* 统一微软雅黑 */
+            font-weight: bold; /* 全局加粗 */
+        }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            color: #333; 
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #title-bar {
+            height: 70px; /* 保持原高度 */
+            background: #0066cc;
+            color: white;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 200;
+        }
+        #title-main {
+            font-size: 28px; /* 保持原字号（非右侧区） */
+        }
+        #author-info {
+            font-size: 20px; /* 保持原字号（非右侧区） */
+            opacity: 0.9;
+        }
+        #main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 70px); /* 适配标题栏高度 */
+        }
+        #simulation-area {
+            flex: 1;
+            position: relative;
+        }
+        canvas { 
+            display: block; 
+            width: 100%;
+            height: 100%;
+        }
+        #control-area {
+            width: 400px; /* 适配16px字号缩小宽度，更紧凑 */
+            padding: 15px; /* 减小内边距，适配16px */
+            background: #f8f9fa;
+            border-left: 1px solid #ddd;
+            overflow-y: auto;
+            height: 100%;
+            font-size: 16px; /* 右侧区基础字号统一为16px */
+        }
+        #scene-tabs {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            transform: none;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .scene-tab {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 20px; /* 保持原字号（非右侧区） */
+            color: #555;
+            transition: all 0.2s;
+        }
+        .scene-tab.active {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        .control-panel {
+            position: static;
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 15px; /* 减小面板内边距，适配16px */
+            border-radius: 8px;
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            user-select: none;
+            display: none;
+            margin-bottom: 15px; /* 减小面板间距，适配16px */
+        }
+        .control-panel.active {
+            display: block;
+        }
+        h2 { 
+            font-size: 16px; /* 右侧区面板标题：16px */
+            margin: 0 0 15px 0; /* 减小标题下边距，适配16px */
+            color: #0066cc; 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 10px; /* 减小标题下内边距，适配16px */
+        }
+        .control-group { 
+            margin-bottom: 15px; /* 减小控件组间距，适配16px */
+            position: relative;
+        }
+        label { 
+            display: block; 
+            margin-bottom: 8px; /* 减小标签下边距，适配16px */
+            font-size: 16px; /* 右侧区标签：16px */
+            color: #555; 
+        }
+        input[type=range] {
+            width: 100%;
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 8px; /* 减小滑块内边距，适配16px */
+            border-radius: 4px;
+            outline: none;
+            font-size: 16px; /* 右侧区滑块：16px */
+            accent-color: #0066cc;
+            cursor: pointer;
+        }
+        .range-value {
+            position: absolute;
+            right: 0;
+            top: -26px; /* 调整位置，适配16px字号 */
+            background: #0066cc;
+            color: white;
+            padding: 4px 10px; /* 减小数值框内边距，适配16px */
+            border-radius: 4px;
+            font-size: 16px; /* 右侧区滑块数值：16px */
+            min-width: 70px; /* 缩小数值框宽度，适配16px */
+            text-align: center;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px; /* 减小仪表盘间距，适配16px */
+            margin-top: 15px; /* 减小仪表盘上边距，适配16px */
+            font-family: 'Consolas', "Microsoft YaHei", monospace;
+            font-size: 16px; /* 右侧区仪表盘基础：16px */
+            background: #f8f9fa;
+            padding: 10px; /* 减小仪表盘内边距，适配16px */
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        .dash-item { display: flex; flex-direction: column; }
+        .dash-label { color: #666; font-size: 16px; /* 右侧区仪表盘标签：16px */ }
+        .dash-val { color: #0066cc; font-size: 16px; /* 右侧区仪表盘数值：16px */ font-weight: bold; }
+        .dash-val.highlight { color: #009966; }
+        .dash-val.non-conserved { color: #e74c3c; }
+        .hint { 
+            font-size: 16px; /* 右侧区提示文字：16px */
+            color: #777; 
+            margin-top: 15px; /* 减小提示文字上边距，适配16px */
+            line-height: 1.5; /* 微调行高，适配16px */
+            border-left: 2px solid #0066cc; 
+            padding-left: 12px; /* 减小提示文字内边距，适配16px */
+        }
+        #camera-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 20px; /* 保持原字号（非右侧区） */
+            color: #555;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+</head>
+<body>
+    <div id="title-bar">
+        <div id="title-main">角动量守恒物理仿真系统</div>
+        <div id="author-info">作者：xatu_bai</div>
+    </div>
+
+    <div id="main-container">
+        <div id="simulation-area">
+            <div id="scene-tabs">
+                <div class="scene-tab active" data-scene="helicopter">直升机场景</div>
+                <div class="scene-tab" data-scene="star">脉冲星场景</div>
+                <div class="scene-tab" data-scene="dumbbell">哑铃场景</div>
+            </div>
+            <div id="camera-hint">
+                🖱️ 左键拖动=旋转视角 | 滚轮=缩放 | 右键拖动=平移
+            </div>
+        </div>
+
+        <div id="control-area">
+            <div class="control-panel active" id="helicopter-panel">
+                <h2>双旋翼直升机旋翼设置</h2>
+                <div class="control-group">
+                    <label>上层旋翼角速度 (橙色) (rad/s)</label>
+                    <input type="range" id="heli-top-speed" min="-10" max="10" value="0">
+                    <span class="range-value" id="heli-top-value">-10.00</span>
+                </div>
+                <div class="control-group">
+                    <label>下层旋翼角速度 (红色) (rad/s)</label>
+                    <input type="range" id="heli-bottom-speed" min="-10" max="10" value="0">
+                    <span class="range-value" id="heli-bottom-value">-10.00</span>
+                </div>
+                <div class="control-group">
+                    <label>尾翼旋翼角速度 (蓝色) (rad/s)</label>
+                    <input type="range" id="heli-tail-speed" min="-170" max="170" value="0">
+                    <span class="range-value" id="heli-tail-value">0.00</span>
+                </div>
+                <div class="dashboard">
+                    <div class="dash-item">
+                        <span class="dash-label">上层角速度</span>
+                        <span id="heli-val-w1" class="dash-val">-10.00 rad/s</span>
+                    </div>
+                    <div class="dash-item">
+                        <span class="dash-label">下层角速度</span>
+                        <span id="heli-val-w2" class="dash-val">-10.00 rad/s</span>
+                    </div>
+                    <div class="dash-item">
+                        <span class="dash-label">尾翼角速度</span>
+                        <span id="heli-val-wtail" class="dash-val">0.00 rad/s</span>
+                    </div>
+                    <div class="dash-item">
+                        <span class="dash-label">机身角速度 </span>
+                        <span id="heli-val-body" class="dash-val">0.0000 rad/s</span>
+                    </div>
+                    <div class="dash-item" style="grid-column: 1 / -1;">
+                        <span class="dash-label">系统总角动量 (旋翼+机身)</span>
+                        <span id="heli-val-total-L" class="dash-val highlight">0.00 (守恒)</span>
+                    </div>
+                </div>
+                <div class="hint">
+                    双旋翼+机身总系统角动量守恒！尾翼通过外力矩打破守恒。
+                </div>
+            </div>
+
+            <div class="control-panel" id="star-panel">
+                <h2>恒星塌缩 - 脉冲星模拟</h2>
+                <div class="control-group">
+                    <label>恒星半径 (塌缩程度)</label>
+                    <input type="range" id="star-radius-slider" min="40" max="150" value="100">
+                    <span class="range-value" id="star-radius-value">90</span>
+                </div>
+                <div class="dashboard">
+                    <div class="dash-item">
+                        <span class="dash-label">转动惯量 (I)</span>
+                        <span id="star-val-i" class="dash-val">--</span>
+                    </div>
+                    <div class="dash-item">
+                        <span class="dash-label">自转角速度 (ω)</span>
+                        <span id="star-val-w" class="dash-val">--</span>
+                    </div>
+                    <div class="dash-item" style="grid-column: 1 / -1;">
+                        <span class="dash-label">角动量 (L)</span>
+                        <span class="dash-val highlight">CONST (守恒)</span>
+                    </div>
+                </div>
+                <div class="hint">
+                    向左拖动模拟恒星塌缩，半径减小→转动惯量降低→角速度剧增（脉冲星极速自转）。
+                </div>
+            </div>
+
+            <div class="control-panel" id="dumbbell-panel">
+                <h2>经典哑铃模型 - 角动量守恒</h2>
+                <div class="control-group">
+                    <label>重球距离 (转动半径)</label>
+                    <input type="range" id="dumbbell-radius-slider" min="20" max="100" value="50">
+                    <span class="range-value" id="dumbbell-radius-value">50</span>
+                </div>
+                <div class="dashboard">
+                    <div class="dash-item">
+                        <span class="dash-label">转动惯量 (I)</span>
+                        <span id="dumbbell-val-i" class="dash-val">--</span>
+                    </div>
+                    <div class="dash-item">
+                        <span class="dash-label">角速度 (ω)</span>
+                        <span id="dumbbell-val-w" class="dash-val">--</span>
+                    </div>
+                    <div class="dash-item" style="grid-column: 1 / -1;">
+                        <span class="dash-label">角动量 (L)</span>
+                        <span class="dash-val highlight">CONST (守恒)</span>
+                    </div>
+                </div>
+                <div class="hint">
+                    经典物理演示：减小重球距离→转动惯量降低→角速度增加，角动量保持不变。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentScene = 'helicopter';
+        
+        const sceneBackgrounds = {
+            helicopter: new THREE.Color(0x87ceeb),
+            star: new THREE.Color(0x050a18),
+            dumbbell: new THREE.Color(0x0b0b10)
+        };
+        
+        const SCENE_PHYSICS = {
+            helicopter: {
+                I_rotor: 9.0,    // 单旋翼转动惯量
+                I_body: 80.0,    // 机身转动惯量
+                I_tail: 2.0,     // 尾翼转动惯量
+                torque_factor: 0.8, // 尾翼力矩系数
+                omega1: -10.0,   // 上层角速度（初始-10）
+                omega2: -10.0,   // 下层角速度（初始-10）
+                omega_tail: 0.0, // 尾翼角速度
+                omega_body: 0,   // 机身角速度
+                total_L: 0       // 总角动量（旋翼+机身）
+            },
+            star: {
+                L: 100,
+                radius: 0.9,
+                inertia: 0,
+                omega: 0
+            },
+            dumbbell: {
+                L: 100,
+                radius: 0.5,
+                inertia: 0,
+                omega: 0
+            }
+        };
+
+        const SceneObjects = {
+            helicopter: { 
+                group: null, 
+                topRotor: null, 
+                bottomRotor: null, 
+                heliBody: null,
+                tailBoom: null,
+                tailRotor: null
+            },
+            star: { points: null, core: null },
+            dumbbell: { group: null, ball1: null, ball2: null, rod: null }
+        };
+
+        const camoTextureLoader = new THREE.TextureLoader();
+        let camoTexture;
+        camoTextureLoader.load('https://picsum.photos/id/122/1024/1024', (texture) => {
+            camoTexture = texture;
+            camoTexture.wrapS = THREE.RepeatWrapping;
+            camoTexture.wrapT = THREE.RepeatWrapping;
+            camoTexture.repeat.set(2, 2);
+            if (SceneObjects.helicopter.heliBody) {
+                SceneObjects.helicopter.heliBody.children.forEach(child => {
+                    if (child.isMesh) {
+                        child.material.map = camoTexture;
+                        child.material.needsUpdate = true;
+                    }
+                });
+            }
+        });
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = sceneBackgrounds.helicopter;
+            scene.fog = new THREE.Fog(0x0b0b10, 20, 80);
+
+            const simArea = document.getElementById('simulation-area');
+            camera = new THREE.PerspectiveCamera(45, simArea.clientWidth / simArea.clientHeight, 0.1, 1000);
+            camera.position.set(8, 6, 12);
+            camera.lookAt(0, 2, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(simArea.clientWidth, simArea.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            simArea.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 1);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            const grid = new THREE.GridHelper(50, 50, 0x333333, 0x111111);
+            grid.visible = false;
+            scene.add(grid);
+
+            initHelicopterScene();
+            initStarScene();
+            initDumbbellScene();
+
+            hideAllScenes();
+            showScene(currentScene);
+            initEventListeners();
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            const simArea = document.getElementById('simulation-area');
+            camera.aspect = simArea.clientWidth / simArea.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(simArea.clientWidth, simArea.clientHeight);
+        }
+
+        function initHelicopterScene() {
+            const heliGroup = new THREE.Group();
+            SceneObjects.helicopter.group = heliGroup;
+            scene.add(heliGroup);
+
+            const heliBody = new THREE.Group();
+            SceneObjects.helicopter.heliBody = heliBody;
+            heliGroup.add(heliBody);
+
+            const camoMaterial = new THREE.MeshPhongMaterial({
+                color: 0x5a8c58,
+                map: camoTexture || null,
+                specular: 0x333333,
+                shininess: 10,
+                emissive: 0x102010
+            });
+
+            const bodyMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 2, 4.5),
+                camoMaterial.clone()
+            );
+            bodyMesh.position.y = 1;
+            bodyMesh.castShadow = true;
+            bodyMesh.receiveShadow = true;
+            heliBody.add(bodyMesh);
+
+            const tailBoom = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 0.5, 8),
+                camoMaterial.clone()
+            );
+            tailBoom.position.set(0, 1, -4);
+            tailBoom.castShadow = true;
+            tailBoom.receiveShadow = true;
+            heliBody.add(tailBoom);
+            SceneObjects.helicopter.tailBoom = tailBoom;
+
+            const tailBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 0.4),
+                new THREE.MeshStandardMaterial({ color: 0x95a5a6 })
+            );
+            tailBase.position.set(0, 1.3, -3.7);
+            tailBase.rotation.z = Math.PI / 2;
+            tailBoom.add(tailBase);
+
+            const verticalFin = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, 1.5, 0.7),
+                new THREE.MeshStandardMaterial({ color: 0x34495e })
+            );
+            verticalFin.position.set(0, 1.7, -7.5);
+            heliBody.add(verticalFin);
+
+            const horizontalStab = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 0.1, 0.4),
+                new THREE.MeshStandardMaterial({ color: 0x34495e })
+            );
+            horizontalStab.position.set(0, 1, -7.3);
+            heliBody.add(horizontalStab);
+
+            const mast = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 2),
+                new THREE.MeshStandardMaterial({ color: 0x95a5a6 })
+            );
+            mast.position.y = 3;
+            heliBody.add(mast);
+
+            const createRotor = (color, yPos, parent, localPos = {x:0,y:0,z:0}, isTail = false) => {
+                const rotorGroup = new THREE.Group();
+                rotorGroup.position.set(localPos.x, localPos.y, localPos.z);
+                
+                if (isTail) {
+                    rotorGroup.rotation.z = Math.PI / 2;
+                }
+
+                const hub = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.2, 0.2, 0.2, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x7f8c8d })
+                );
+                rotorGroup.add(hub);
+
+                const bladesContainer = new THREE.Group();
+                rotorGroup.add(bladesContainer);
+
+                const bladeLength = isTail ? 1 : 4.0;
+                const bladeCount = isTail ? 2 : 4;
+                for (let i = 0; i < bladeCount; i++) {
+                    const bladeGeo = new THREE.BoxGeometry(bladeLength, 0.1, 0.2);
+                    bladeGeo.translate(bladeLength/2, 0, 0);
+                    const blade = new THREE.Mesh(
+                        bladeGeo,
+                        new THREE.MeshStandardMaterial({ color: color })
+                    );
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = i * (Math.PI / (bladeCount/2));
+                    pivot.add(blade);
+                    bladesContainer.add(pivot);
+                }
+
+                parent.add(rotorGroup);
+                return bladesContainer;
+            };
+
+            SceneObjects.helicopter.topRotor = createRotor(0xf39c12, 4.0, heliGroup, {x:0,y:4.0,z:0});
+            SceneObjects.helicopter.bottomRotor = createRotor(0xe74c3c, 3.5, heliGroup, {x:0,y:3.5,z:0});
+            SceneObjects.helicopter.tailRotor = createRotor(0x3498db, 0, tailBoom, {x:0.3,y:1.3,z:-3.7}, true);
+            
+            updateHelicopterPhysics();
+        }
+
+        function initStarScene() {
+            const starGroup = new THREE.Group();
+            scene.add(starGroup);
+
+            const geometry = new THREE.BufferGeometry();
+            const count = 3000;
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const initialDirs = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const r = Math.random();
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const x = Math.sin(phi) * Math.cos(theta);
+                const y = Math.sin(phi) * Math.sin(theta);
+                const z = Math.cos(phi);
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+                initialDirs[i * 3] = x;
+                initialDirs[i * 3 + 1] = y;
+                initialDirs[i * 3 + 2] = z;
+                
+                colors[i * 3] = 1;
+                colors[i * 3 + 1] = 0.5;
+                colors[i * 3 + 2] = 0;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('initialDir', new THREE.BufferAttribute(initialDirs, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.15,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true
+            });
+            
+            const starPoints = new THREE.Points(geometry, material);
+            starGroup.add(starPoints);
+            SceneObjects.star.points = starPoints;
+
+            const starCore = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+            );
+            starGroup.add(starCore);
+            SceneObjects.star.core = starCore;
+            starGroup.visible = false;
+            updateStarPhysics();
+        }
+
+        function initDumbbellScene() {
+            const dumbbellGroup = new THREE.Group();
+            scene.add(dumbbellGroup);
+            SceneObjects.dumbbell.group = dumbbellGroup;
+
+            const axis = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.2, 5, 16),
+                new THREE.MeshPhongMaterial({ color: 0x555555 })
+            );
+            dumbbellGroup.add(axis);
+
+            const ballGeo = new THREE.SphereGeometry(0.6, 32, 32);
+            const ballMat = new THREE.MeshPhongMaterial({ 
+                color: 0xff3333, 
+                shininess: 100 
+            });
+            const ball1 = new THREE.Mesh(ballGeo, ballMat);
+            const ball2 = new THREE.Mesh(ballGeo, ballMat);
+            ball1.castShadow = true;
+            ball2.castShadow = true;
+
+            const stripe = new THREE.Mesh(
+                new THREE.BoxGeometry(1.3, 0.1, 0.1),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            ball1.add(stripe.clone());
+            ball2.add(stripe.clone());
+
+            const rod = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 1, 8),
+                new THREE.MeshPhongMaterial({ color: 0x888888 })
+            );
+            rod.rotation.z = Math.PI / 2;
+            rod.castShadow = true;
+            dumbbellGroup.add(ball1, ball2, rod);
+            
+            SceneObjects.dumbbell.ball1 = ball1;
+            SceneObjects.dumbbell.ball2 = ball2;
+            SceneObjects.dumbbell.rod = rod;
+            dumbbellGroup.visible = false;
+            updateDumbbellPhysics();
+        }
+
+        function switchScene(targetScene) {
+            currentScene = targetScene;
+            
+            scene.background = sceneBackgrounds[targetScene];
+            
+            scene.children.forEach(child => {
+                if (child.isGridHelper) {
+                    child.visible = targetScene === 'dumbbell';
+                }
+            });
+            
+            scene.children.forEach(child => {
+                if (child.isDirectionalLight) {
+                    child.intensity = targetScene === 'star' ? 1.8 : 1.2;
+                }
+                if (child.isAmbientLight) {
+                    child.intensity = targetScene === 'star' ? 0.6 : 1.0;
+                }
+            });
+
+            document.querySelectorAll('.scene-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.scene === targetScene);
+            });
+            document.querySelectorAll('.control-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === `${targetScene}-panel`);
+            });
+            
+            hideAllScenes();
+            showScene(targetScene);
+            resetCamera(targetScene);
+        }
+
+        function hideAllScenes() {
+            if (SceneObjects.helicopter.group) SceneObjects.helicopter.group.visible = false;
+            if (SceneObjects.star.points) SceneObjects.star.points.parent.visible = false;
+            if (SceneObjects.dumbbell.group) SceneObjects.dumbbell.group.visible = false;
+        }
+
+        function showScene(sceneName) {
+            switch (sceneName) {
+                case 'helicopter':
+                    SceneObjects.helicopter.group.visible = true;
+                    break;
+                case 'star':
+                    SceneObjects.star.points.parent.visible = true;
+                    break;
+                case 'dumbbell':
+                    SceneObjects.dumbbell.group.visible = true;
+                    break;
+            }
+        }
+
+        function resetCamera(sceneName) {
+            switch (sceneName) {
+                case 'helicopter':
+                    camera.position.set(8, 6, 12);
+                    controls.target.set(0, 2, 0);
+                    break;
+                case 'star':
+                    camera.position.set(12, 8, 12);
+                    controls.target.set(0, 0, 0);
+                    break;
+                case 'dumbbell':
+                    camera.position.set(15, 10, 15);
+                    controls.target.set(0, 0, 0);
+                    break;
+            }
+            controls.update();
+        }
+
+        // 核心修复：1.双旋翼+机身总系统角动量守恒 2.尾翼转速1:1等效（200=原179速度）
+        function updateHelicopterPhysics() {
+            const physics = SCENE_PHYSICS.helicopter;
+            physics.omega1 = parseFloat(document.getElementById('heli-top-speed').value);
+            physics.omega2 = parseFloat(document.getElementById('heli-bottom-speed').value);
+            physics.omega_tail = parseFloat(document.getElementById('heli-tail-speed').value);
+            
+            // 尾翼转速等效映射：200rad/s = 原179rad/s（比例系数179/200=0.895）
+            const tailRenderSpeed = physics.omega_tail * 0.895;
+
+            // 正确的总系统角动量守恒逻辑：旋翼角动量 + 机身角动量 = 常数（无尾翼时守恒）
+            const rotorTotalL = physics.I_rotor * physics.omega1 + physics.I_rotor * physics.omega2;
+            
+            if (physics.omega_tail === 0) {
+                // 无尾翼力矩：总系统角动量守恒（旋翼+机身=0）
+                physics.omega_body = -rotorTotalL / physics.I_body;
+                physics.total_L = rotorTotalL + physics.I_body * physics.omega_body; // 恒等于0
+            } else {
+                // 有尾翼力矩：外力矩打破守恒
+                const tailTorque = physics.torque_factor * physics.omega_tail;
+                physics.omega_body = (-rotorTotalL / physics.I_body) + (tailTorque / physics.I_body);
+                // 总角动量=旋翼+机身+尾翼（尾翼引入外力矩，不守恒）
+                physics.total_L = rotorTotalL + physics.I_body * physics.omega_body + physics.I_tail * physics.omega_tail;
+            }
+
+            // 更新UI
+            document.getElementById('heli-top-value').textContent = physics.omega1.toFixed(2);
+            document.getElementById('heli-bottom-value').textContent = physics.omega2.toFixed(2);
+            document.getElementById('heli-tail-value').textContent = physics.omega_tail.toFixed(2);
+            document.getElementById('heli-val-w1').innerText = physics.omega1.toFixed(2) + " rad/s";
+            document.getElementById('heli-val-w2').innerText = physics.omega2.toFixed(2) + " rad/s";
+            document.getElementById('heli-val-wtail').innerText = physics.omega_tail.toFixed(2) + " rad/s";
+            document.getElementById('heli-val-body').innerText = physics.omega_body.toFixed(4) + " rad/s";
+            
+            const totalLText = document.getElementById('heli-val-total-L');
+            if (physics.omega_tail === 0) {
+                totalLText.innerText = physics.total_L.toFixed(2) + " (守恒)";
+                totalLText.className = "dash-val highlight";
+            } else {
+                totalLText.innerText = physics.total_L.toFixed(2) + " (不守恒)";
+                totalLText.className = "dash-val non-conserved";
+            }
+
+            // 存储渲染用的尾翼速度（供animate使用）
+            physics.tailRenderSpeed = tailRenderSpeed;
+        }
+
+        function updateStarPhysics() {
+            const physics = SCENE_PHYSICS.star;
+            physics.radius = parseFloat(document.getElementById('star-radius-slider').value)/100;
+            const r_eff = 0.5 + physics.radius * 5.5; 
+            physics.inertia = 0.1+1.0 * Math.pow(r_eff, 2); 
+            physics.omega = physics.L / physics.inertia;
+
+            const positions = SceneObjects.star.points.geometry.attributes.position.array;
+            const dirs = SceneObjects.star.points.geometry.attributes.initialDir.array;
+            const colors = SceneObjects.star.points.geometry.attributes.color.array;
+            
+            const heat = 1 - physics.radius; 
+            const rCol = 1.0 - heat * 0.5;
+            const gCol = 0.2 + heat * 0.8;
+            const bCol = heat * 1.0;
+            SceneObjects.star.core.material.color.setRGB(rCol, gCol, bCol);
+
+            for (let i = 0; i < positions.length / 3; i++) {
+                positions[i * 3] = dirs[i * 3] * r_eff;
+                positions[i * 3+1] = dirs[i * 3+1] * r_eff;
+                positions[i * 3+2] = dirs[i * 3+2] * r_eff;
+                
+                colors[i * 3] = rCol;
+                colors[i * 3+1] = gCol;
+                colors[i * 3+2] = bCol;
+            }
+            
+            SceneObjects.star.points.geometry.attributes.position.needsUpdate = true;
+            SceneObjects.star.points.geometry.attributes.color.needsUpdate = true;
+            SceneObjects.star.core.scale.setScalar(r_eff * 0.4); 
+            
+            document.getElementById('star-radius-value').textContent = document.getElementById('star-radius-slider').value;
+            document.getElementById('star-val-i').innerText = physics.inertia.toFixed(2);
+            document.getElementById('star-val-w').innerText = physics.omega.toFixed(2) + " rad/s";
+        }
+
+        function updateDumbbellPhysics() {
+            const physics = SCENE_PHYSICS.dumbbell;
+            physics.radius = parseFloat(document.getElementById('dumbbell-radius-slider').value)/100;
+            const r_eff = 0.5 + physics.radius * 3.5; 
+            physics.inertia = 0.2+2.0 * Math.pow(r_eff, 2); 
+            physics.omega = physics.L / physics.inertia;
+
+            SceneObjects.dumbbell.ball1.position.set(r_eff, 0, 0);
+            SceneObjects.dumbbell.ball2.position.set(-r_eff, 0, 0);
+            SceneObjects.dumbbell.rod.scale.set(1, r_eff * 2, 1); 
+            
+            document.getElementById('dumbbell-radius-value').textContent = document.getElementById('dumbbell-radius-slider').value;
+            document.getElementById('dumbbell-val-i').innerText = physics.inertia.toFixed(2);
+            document.getElementById('dumbbell-val-w').innerText = physics.omega.toFixed(2) + " rad/s";
+        }
+
+        function initEventListeners() {
+            document.querySelectorAll('.scene-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchScene(tab.dataset.scene));
+            });
+            document.getElementById('heli-top-speed').addEventListener('input', updateHelicopterPhysics);
+            document.getElementById('heli-bottom-speed').addEventListener('input', updateHelicopterPhysics);
+            document.getElementById('heli-tail-speed').addEventListener('input', updateHelicopterPhysics);
+            document.getElementById('star-radius-slider').addEventListener('input', updateStarPhysics);
+            document.getElementById('dumbbell-radius-slider').addEventListener('input', updateDumbbellPhysics);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            const dt = 0.016;
+
+            switch (currentScene) {
+                case 'helicopter':
+                    const heliPhysics = SCENE_PHYSICS.helicopter;
+                    // 上层旋翼：正=逆时针（-=）
+                    SceneObjects.helicopter.topRotor.rotation.y -= heliPhysics.omega1 * dt;
+                    // 下层旋翼：正=逆时针（-=）
+                    SceneObjects.helicopter.bottomRotor.rotation.y -= heliPhysics.omega2 * dt;
+                    // 尾翼：使用等效映射后的速度（200=原179）
+                    SceneObjects.helicopter.tailRotor.rotation.y -= heliPhysics.tailRenderSpeed * dt;
+                    // 机身：正=逆时针（-=）
+                    SceneObjects.helicopter.heliBody.rotation.y -= heliPhysics.omega_body * dt;
+                    break;
+
+                case 'star':
+                    const starPhysics = SCENE_PHYSICS.star;
+                    SceneObjects.star.points.rotation.y += starPhysics.omega * dt;
+                    SceneObjects.star.core.rotation.y += starPhysics.omega * dt;
+                    break;
+
+                case 'dumbbell':
+                    const dumbbellPhysics = SCENE_PHYSICS.dumbbell;
+                    SceneObjects.dumbbell.group.rotation.y += dumbbellPhysics.omega * dt;
+                    break;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

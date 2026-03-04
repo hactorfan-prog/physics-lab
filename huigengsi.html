@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>惠更斯原理 - 完整演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            padding: 25px;
+            max-width: 950px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 26px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto 18px;
+            border: 3px solid #34495e;
+            border-radius: 12px;
+            background: #000;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .slider-value {
+            float: right;
+            color: #e74c3c;
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        button.start { background: #667eea; }
+        button.pause { background: #f093fb; }
+        button.reset { background: #4facfe; }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .info {
+            background: #e8f4f8;
+            border-left: 4px solid #00bcd4;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>惠更斯原理 - 完整演示</h1>
+        <p class="subtitle">实线波前 → 次波源 → 持久子波 → 新实线波前</p>
+
+        <canvas id="canvas" width="850" height="650"></canvas>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div style="width: 12px; height: 12px; background: #ffff00; border-radius: 50%; box-shadow: 0 0 8px #ffff00;"></div>
+                <span>主波源</span>
+            </div>
+            <div class="legend-item">
+                <div style="width: 25px; height: 3px; background: #00ffff;"></div>
+                <span>实线波前</span>
+            </div>
+            <div class="legend-item">
+                <div style="width: 12px; height: 12px; background: #ff6b6b; border-radius: 50%;"></div>
+                <span>次波源</span>
+            </div>
+            <div class="legend-item">
+                <div style="width: 25px; height: 2px; background: #51cf66;"></div>
+                <span>子波（持久）</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>波源类型</label>
+                <select id="waveType">
+                    <option value="point">点波源（球面波）</option>
+                    <option value="line">线波源（平面波）</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>场景选择</label>
+                <select id="scenario">
+                    <option value="normal">无障碍物</option>
+                    <option value="single-slit">单缝衍射</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="slitControls" style="display: none;">
+                <label>单缝位置 <span class="slider-value" id="slitCenterValue">325</span></label>
+                <input type="range" id="slitCenter" min="150" max="500" value="325" step="5">
+                <label style="margin-top: 8px;">单缝宽度 <span class="slider-value" id="slitWidthValue">80</span></label>
+                <input type="range" id="slitWidth" min="30" max="150" value="80" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>波速 <span class="slider-value" id="speedValue">2.5</span></label>
+                <input type="range" id="speed" min="1" max="5" value="2.5" step="0.5">
+            </div>
+
+            <div class="control-group">
+                <label>次波源数量 <span class="slider-value" id="countValue">24</span></label>
+                <input type="range" id="count" min="12" max="36" value="24" step="4">
+            </div>
+
+            <div class="control-group">
+                <label>波前间隔 <span class="slider-value" id="intervalValue">80</span></label>
+                <input type="range" id="interval" min="60" max="120" value="80" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>动画倍速 <span class="slider-value" id="timeScaleValue">1.0</span></label>
+                <input type="range" id="timeScale" min="0.1" max="3" value="1" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="showWavefronts" checked>波前
+                    <input type="checkbox" id="showSources" checked style="margin-left: 10px;">次波源
+                </label>
+                <label style="margin-top: 8px;">
+                    <input type="checkbox" id="showSecondary" checked>子波
+                </label>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="start" id="startBtn">▶ 开始</button>
+            <button class="pause" id="pauseBtn">⏸ 暂停</button>
+            <button class="reset" id="resetBtn">🔄 重置</button>
+        </div>
+
+        <div class="info">
+            <strong>惠更斯-菲涅尔原理：</strong><br>
+            <strong>点波源（球面波）：</strong>
+            ① 主波源发出实线波前（青色圆）
+            → ② 波前圆周上生成次波源（红点，持久显示）
+            → ③ 每个次波源向外发出半圆子波（绿色弧，持久显示）
+            → ④ 当子波扩散到一定大小，所有子波的包络瞬间形成新的实线波前
+            → ⑤ 在新波前圆周上生成新的次波源，循环传播
+            <br><br>
+            <strong>线波源（平面波）：</strong>
+            ① 左侧线波源发出平面波前（青色直线）向右传播
+            → ② 波前直线上生成次波源（红点，均匀分布，每级数量相同）
+            → ③ 每个次波源向外发出半圆子波（绿色弧）
+            → ④ 所有子波的包络形成新的平行波前（黄色直线）
+            → ⑤ 在新波前上生成新的次波源，继续向右传播
+            <br><br>
+            <strong>单缝衍射：</strong>
+            当波遇到单缝屏障时，只有位于单缝处的次波源能够发出子波，
+            这些子波继续传播并形成新的波前，展现出衍射现象。
+            单缝越窄，衍射效应越明显。
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        let animationId;
+        let isRunning = false;
+        let time = 0;
+
+        let params = {
+            speed: 2.5,
+            count: 24,
+            interval: 80,
+            timeScale: 1.0,
+            waveType: 'point', // 'point' 或 'line'
+            scenario: 'normal', // 'normal' 或 'single-slit'
+            slitCenter: 325, // 单缝中心位置（y坐标）
+            slitWidth: 80, // 单缝宽度
+            showWavefronts: true,
+            showSources: true,
+            showSecondary: true,
+            showEnvelope: true
+        };
+
+        // 实线波前类（已经确认的波前）
+        class SolidWavefront {
+            constructor(radius, generation, type = 'circle') {
+                this.radius = radius; // 对于圆形是半径，对于直线是x坐标
+                this.generation = generation;
+                this.type = type; // 'circle' 或 'line'
+                this.sourcesCreated = false;
+            }
+
+            draw() {
+                if (!params.showWavefronts) return;
+
+                // 实线波前 - 青色，不消失
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+                ctx.lineWidth = 3;
+
+                if (this.type === 'circle') {
+                    // 圆形波前
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'line') {
+                    // 直线波前（垂直线）
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius, 0);
+                    ctx.lineTo(this.radius, canvas.height);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // 次波源类
+        class SecondarySource {
+            constructor(x, y, angle, generation) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle; // 传播方向
+                this.generation = generation;
+                this.waveRadius = 0; // 子波半径
+                this.active = true;
+            }
+
+            update() {
+                if (this.active) {
+                    this.waveRadius += params.speed * params.timeScale;
+                }
+            }
+
+            draw() {
+                // 绘制次波源点（持久显示）
+                if (params.showSources) {
+                    ctx.fillStyle = 'rgba(255, 107, 107, 0.9)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 绘制子波（持久显示，半圆弧）
+                if (params.showSecondary && this.waveRadius > 0) {
+                    const startAngle = this.angle - Math.PI / 2;
+                    const endAngle = this.angle + Math.PI / 2;
+
+                    // 发光效果
+                    ctx.strokeStyle = 'rgba(81, 207, 102, 0.3)';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.waveRadius, startAngle, endAngle);
+                    ctx.stroke();
+
+                    // 主线 - 更亮更粗
+                    ctx.strokeStyle = 'rgba(81, 207, 102, 0.9)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.waveRadius, startAngle, endAngle);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // 包络面类（虚线，待确认的波前）
+        class EnvelopeSurface {
+            constructor(radius, generation, sources, type = 'circle') {
+                this.radius = radius;
+                this.generation = generation;
+                this.sources = sources; // 对应的次波源列表
+                this.type = type; // 'circle' 或 'line'
+                this.promoted = false; // 是否已经升级为实线波前
+                this.transitionProgress = 0; // 渐变进度：0=不显示, 0-1=虚线渐变为实线, 1=完成
+            }
+
+            update() {
+                // 更新包络半径（跟随子波扩散）
+                if (this.sources.length > 0) {
+                    const sample = this.sources[0];
+
+                    if (this.type === 'circle') {
+                        const sourceDistance = Math.sqrt(
+                            Math.pow(sample.x - centerX, 2) +
+                            Math.pow(sample.y - centerY, 2)
+                        );
+                        this.radius = sourceDistance + sample.waveRadius;
+                    } else if (this.type === 'line') {
+                        // 平面波：包络位置 = 次波源x + 子波半径
+                        this.radius = sample.x + sample.waveRadius;
+                    }
+                }
+
+                // 更新渐变进度
+                if (this.shouldShowEnvelope() && !this.promoted) {
+                    this.transitionProgress = Math.min(1, this.transitionProgress + 0.1); // 10帧完成
+                }
+            }
+
+            draw() {
+                if (!this.shouldShowEnvelope() || this.promoted) return;
+
+                // 根据渐变进度决定绘制样式
+                const progress = this.transitionProgress;
+
+                if (progress < 0.7) {
+                    // 阶段1：虚线包络（黄色）
+                    ctx.strokeStyle = 'rgba(255, 217, 61, 0.95)';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([15, 10]);
+                    ctx.beginPath();
+
+                    if (this.type === 'circle') {
+                        ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+                    } else if (this.type === 'line') {
+                        ctx.moveTo(this.radius, 0);
+                        ctx.lineTo(this.radius, canvas.height);
+                    }
+
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else {
+                    // 阶段2：渐变为实线（黄色→青色）
+                    const t = (progress - 0.7) / 0.3; // 0到1
+                    const r = Math.floor(255 * (1 - t) + 0 * t);
+                    const g = Math.floor(217 * (1 - t) + 255 * t);
+                    const b = Math.floor(61 * (1 - t) + 255 * t);
+
+                    // 虚线间隔逐渐缩小
+                    const dashLength = 15 * (1 - t);
+                    const gapLength = 10 * (1 - t);
+
+                    if (dashLength > 0.5) {
+                        ctx.setLineDash([dashLength, gapLength]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
+
+                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.95)`;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+
+                    if (this.type === 'circle') {
+                        ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+                    } else if (this.type === 'line') {
+                        ctx.moveTo(this.radius, 0);
+                        ctx.lineTo(this.radius, canvas.height);
+                    }
+
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            shouldShowEnvelope() {
+                // 当包络接近目标半径时开始显示
+                let targetRadius;
+                if (this.type === 'circle') {
+                    targetRadius = params.interval * (this.generation + 2);
+                } else if (this.type === 'line') {
+                    targetRadius = 50 + params.interval * (this.generation + 2);
+                }
+
+                const threshold = 20; // 提前20像素开始显示
+                return this.radius >= targetRadius - threshold;
+            }
+
+            shouldPromote() {
+                // 渐变完成后升级为实线波前
+                let targetRadius;
+                if (this.type === 'circle') {
+                    targetRadius = params.interval * (this.generation + 2);
+                } else if (this.type === 'line') {
+                    targetRadius = 50 + params.interval * (this.generation + 2);
+                }
+
+                return this.radius >= targetRadius && this.transitionProgress >= 1 && !this.promoted;
+            }
+        }
+
+        // 数据存储
+        let solidWavefronts = []; // 实线波前（持久）
+        let secondarySources = []; // 所有次波源（持久）
+        let envelopes = []; // 包络面
+
+        // 初始化
+        function init() {
+            time = 0;
+            solidWavefronts = [];
+            secondarySources = [];
+            envelopes = [];
+
+            // 根据波源类型创建初始波前
+            if (params.waveType === 'point') {
+                // 点波源：从中心点开始的圆形波前
+                solidWavefronts.push(new SolidWavefront(0, 0, 'circle'));
+            } else if (params.waveType === 'line') {
+                // 线波源：从左边界开始的直线波前
+                solidWavefronts.push(new SolidWavefront(50, 0, 'line'));
+            }
+        }
+
+        // 创建次波源（在圆周或直线上）
+        function createSources(position, generation, type) {
+            const sources = [];
+
+            // 次波源数量：圆形波逐级递增，平面波保持固定
+            const count = type === 'circle'
+                ? Math.round(params.count * (1 + generation * 0.5))  // 球面波递增50%
+                : params.count;  // 平面波固定数量
+
+            if (type === 'circle') {
+                // 在圆周上创建次波源
+                for (let i = 0; i < count; i++) {
+                    const angle = (i / count) * Math.PI * 2;
+                    const x = centerX + Math.cos(angle) * position;
+                    const y = centerY + Math.sin(angle) * position;
+
+                    // 检查是否在单缝范围内（单缝衍射场景）
+                    if (params.scenario === 'single-slit') {
+                        // 对于圆形波，检查y坐标是否在单缝范围内
+                        const slitTop = params.slitCenter - params.slitWidth / 2;
+                        const slitBottom = params.slitCenter + params.slitWidth / 2;
+
+                        // 只有当次波源的y坐标在单缝范围内才创建
+                        if (y >= slitTop && y <= slitBottom) {
+                            sources.push(new SecondarySource(x, y, angle, generation));
+                        }
+                    } else {
+                        sources.push(new SecondarySource(x, y, angle, generation));
+                    }
+                }
+            } else if (type === 'line') {
+                // 在垂直线上创建次波源
+                const spacing = canvas.height / (count + 1);
+                for (let i = 0; i < count; i++) {
+                    const y = spacing * (i + 1);
+                    const x = position;
+                    const angle = 0; // 平面波向右传播
+
+                    // 检查是否在单缝范围内（单缝衍射场景）
+                    if (params.scenario === 'single-slit') {
+                        const slitTop = params.slitCenter - params.slitWidth / 2;
+                        const slitBottom = params.slitCenter + params.slitWidth / 2;
+
+                        // 只有当次波源的y坐标在单缝范围内才创建
+                        if (y >= slitTop && y <= slitBottom) {
+                            sources.push(new SecondarySource(x, y, angle, generation));
+                        }
+                    } else {
+                        sources.push(new SecondarySource(x, y, angle, generation));
+                    }
+                }
+            }
+
+            return sources;
+        }
+
+        // 主循环
+        function draw() {
+            // 清空
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 检查实线波前是否需要生成次波源
+            for (let wavefront of solidWavefronts) {
+                // 波前扩散（只有初始波前需要扩散）
+                if (wavefront.generation === 0 &&
+                    !wavefront.sourcesCreated) {
+
+                    // 根据类型判断扩散条件
+                    let shouldExpand = false;
+                    if (wavefront.type === 'circle') {
+                        shouldExpand = wavefront.radius < params.interval * (wavefront.generation + 1);
+                    } else if (wavefront.type === 'line') {
+                        shouldExpand = wavefront.radius < 50 + params.interval * (wavefront.generation + 1);
+                    }
+
+                    if (shouldExpand) {
+                        wavefront.radius += params.speed * params.timeScale;
+                    }
+                }
+
+                // 检查是否需要创建次波源（只对初始波前，其他波前在包络升级时已创建）
+                if (wavefront.generation === 0 &&
+                    !wavefront.sourcesCreated) {
+
+                    let shouldCreate = false;
+                    if (wavefront.type === 'circle') {
+                        shouldCreate = wavefront.radius >= params.interval * (wavefront.generation + 1) &&
+                                     wavefront.radius < 400;
+                    } else if (wavefront.type === 'line') {
+                        shouldCreate = wavefront.radius >= 50 + params.interval * (wavefront.generation + 1) &&
+                                     wavefront.radius < canvas.width - 50;
+                    }
+
+                    if (shouldCreate) {
+                        wavefront.sourcesCreated = true;
+
+                        // 创建次波源
+                        const newSources = createSources(wavefront.radius, wavefront.generation, wavefront.type);
+                        secondarySources.push(...newSources);
+
+                        // 创建对应的包络面
+                        envelopes.push(new EnvelopeSurface(wavefront.radius, wavefront.generation, newSources, wavefront.type));
+                    }
+                }
+            }
+
+            // 更新所有次波源
+            for (let source of secondarySources) {
+                source.update();
+            }
+
+            // 更新包络面
+            for (let envelope of envelopes) {
+                envelope.update();
+
+                // 检查是否应该升级为实线波前
+                if (envelope.shouldPromote()) {
+                    envelope.promoted = true;
+
+                    // 创建新的实线波前
+                    const newWavefront = new SolidWavefront(envelope.radius, envelope.generation + 1, envelope.type);
+                    newWavefront.sourcesCreated = true; // 标记为已创建次波源
+                    solidWavefronts.push(newWavefront);
+
+                    // 立即在新波前上创建次波源（同时发生）
+                    let withinBounds = false;
+                    if (envelope.type === 'circle') {
+                        withinBounds = envelope.radius < 400;
+                    } else if (envelope.type === 'line') {
+                        withinBounds = envelope.radius < canvas.width - 50;
+                    }
+
+                    if (withinBounds) {
+                        const newSources = createSources(envelope.radius, envelope.generation + 1, envelope.type);
+                        secondarySources.push(...newSources);
+
+                        // 为新次波源创建包络面
+                        envelopes.push(new EnvelopeSurface(envelope.radius, envelope.generation + 1, newSources, envelope.type));
+                    }
+
+                    // 停止对应次波源的扩散
+                    for (let source of envelope.sources) {
+                        source.active = false;
+                    }
+                }
+            }
+
+            // 绘制所有实线波前（持久）
+            for (let wavefront of solidWavefronts) {
+                if (wavefront.radius > 0) {
+                    wavefront.draw();
+                }
+            }
+
+            // 绘制所有次波源和子波（持久）
+            for (let source of secondarySources) {
+                source.draw();
+            }
+
+            // 绘制包络面
+            for (let envelope of envelopes) {
+                envelope.draw();
+            }
+
+            // 绘制主波源
+            if (params.waveType === 'point') {
+                // 点波源
+                ctx.shadowColor = '#ffff00';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // 脉动效果（只在第一级子波源生成前显示）
+                const hasFirstGeneration = secondarySources.some(s => s.generation === 1);
+                if (!hasFirstGeneration) {
+                    const pulse = Math.sin(time * 0.1) * 3;
+                    ctx.strokeStyle = `rgba(255, 255, 0, ${0.7 + Math.sin(time * 0.1) * 0.3})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, 11 + pulse, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            } else if (params.waveType === 'line') {
+                // 线波源
+                ctx.shadowColor = '#ffff00';
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(50, 0);
+                ctx.lineTo(50, canvas.height);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // 脉动效果（只在第一级子波源生成前显示）
+                const hasFirstGeneration = secondarySources.some(s => s.generation === 1);
+                if (!hasFirstGeneration) {
+                    const pulse = Math.sin(time * 0.1) * 2;
+                    ctx.strokeStyle = `rgba(255, 255, 0, ${0.7 + Math.sin(time * 0.1) * 0.3})`;
+                    ctx.lineWidth = 6 + pulse;
+                    ctx.beginPath();
+                    ctx.moveTo(50, 0);
+                    ctx.lineTo(50, canvas.height);
+                    ctx.stroke();
+                }
+            }
+
+            // 绘制单缝屏障
+            if (params.scenario === 'single-slit') {
+                const slitTop = params.slitCenter - params.slitWidth / 2;
+                const slitBottom = params.slitCenter + params.slitWidth / 2;
+                const barrierX = params.waveType === 'point' ? params.interval : 50 + params.interval;
+
+                // 上方屏障
+                ctx.fillStyle = 'rgba(150, 150, 150, 0.9)';
+                ctx.fillRect(barrierX - 10, 0, 20, slitTop);
+
+                // 下方屏障
+                ctx.fillRect(barrierX - 10, slitBottom, 20, canvas.height - slitBottom);
+
+                // 屏障边缘高光
+                ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(barrierX - 10, 0);
+                ctx.lineTo(barrierX - 10, slitTop);
+                ctx.moveTo(barrierX + 10, 0);
+                ctx.lineTo(barrierX + 10, slitTop);
+                ctx.moveTo(barrierX - 10, slitBottom);
+                ctx.lineTo(barrierX - 10, canvas.height);
+                ctx.moveTo(barrierX + 10, slitBottom);
+                ctx.lineTo(barrierX + 10, canvas.height);
+                ctx.stroke();
+
+                // 单缝标注
+                ctx.fillStyle = '#ff9800';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText('单缝', barrierX + 15, params.slitCenter);
+
+                // 单缝边界标记
+                ctx.strokeStyle = '#ff9800';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath();
+                ctx.moveTo(barrierX - 15, slitTop);
+                ctx.lineTo(barrierX + 30, slitTop);
+                ctx.moveTo(barrierX - 15, slitBottom);
+                ctx.lineTo(barrierX + 30, slitBottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 信息
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 13px Arial';
+            ctx.fillText(`波前数: ${solidWavefronts.length}`, 20, 25);
+            ctx.fillText(`次波源: ${secondarySources.length}`, 20, 45);
+
+            // 标注
+            if (solidWavefronts.length > 1) {
+                const wf = solidWavefronts[1];
+                if (wf.radius > 50 && wf.radius < 250) {
+                    ctx.fillStyle = '#00ffff';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('实线波前', centerX + wf.radius + 10, centerY);
+                }
+            }
+
+            if (secondarySources.length > 0) {
+                const s = secondarySources[Math.floor(secondarySources.length / 2)];
+                if (s.waveRadius > 10 && s.waveRadius < 50) {
+                    ctx.fillStyle = '#51cf66';
+                    ctx.font = '11px Arial';
+                    const labelX = s.x + Math.cos(s.angle) * (s.waveRadius + 12);
+                    const labelY = s.y + Math.sin(s.angle) * (s.waveRadius + 12);
+                    ctx.fillText('子波', labelX, labelY);
+                }
+            }
+        }
+
+        // 动画
+        function animate() {
+            if (!isRunning) return;
+            draw();
+            time++;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // 事件
+        document.getElementById('startBtn').addEventListener('click', () => {
+            isRunning = true;
+            animate();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isRunning = false;
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            init();
+            draw();
+        });
+
+        document.getElementById('waveType').addEventListener('change', (e) => {
+            params.waveType = e.target.value;
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            init();
+            draw();
+        });
+
+        document.getElementById('scenario').addEventListener('change', (e) => {
+            params.scenario = e.target.value;
+
+            // 显示或隐藏单缝控件
+            const slitControls = document.getElementById('slitControls');
+            if (params.scenario === 'single-slit') {
+                slitControls.style.display = 'block';
+            } else {
+                slitControls.style.display = 'none';
+            }
+
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            init();
+            draw();
+        });
+
+        document.getElementById('slitCenter').addEventListener('input', (e) => {
+            params.slitCenter = parseInt(e.target.value);
+            document.getElementById('slitCenterValue').textContent = params.slitCenter;
+        });
+
+        document.getElementById('slitWidth').addEventListener('input', (e) => {
+            params.slitWidth = parseInt(e.target.value);
+            document.getElementById('slitWidthValue').textContent = params.slitWidth;
+        });
+
+        document.getElementById('speed').addEventListener('input', (e) => {
+            params.speed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = params.speed;
+        });
+
+        document.getElementById('count').addEventListener('input', (e) => {
+            params.count = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = params.count;
+        });
+
+        document.getElementById('interval').addEventListener('input', (e) => {
+            params.interval = parseInt(e.target.value);
+            document.getElementById('intervalValue').textContent = params.interval;
+        });
+
+        document.getElementById('timeScale').addEventListener('input', (e) => {
+            params.timeScale = parseFloat(e.target.value);
+            document.getElementById('timeScaleValue').textContent = params.timeScale.toFixed(1);
+        });
+
+        document.getElementById('showWavefronts').addEventListener('change', (e) => {
+            params.showWavefronts = e.target.checked;
+        });
+
+        document.getElementById('showSources').addEventListener('change', (e) => {
+            params.showSources = e.target.checked;
+        });
+
+        document.getElementById('showSecondary').addEventListener('change', (e) => {
+            params.showSecondary = e.target.checked;
+        });
+
+        // 初始化
+        init();
+        draw();
+    </script>
+</body>
+</html>

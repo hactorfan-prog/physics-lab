@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维平面运动模拟器 - 最终修复版</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+            color: #e0e1dd;
+            min-height: 100vh;
+            padding: 8px;
+            line-height: 1.3;
+            overflow-x: hidden;
+            overflow-y: hidden;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            height: 100vh;
+        }
+        
+        header {
+            padding: 6px 12px;
+            background: rgba(13, 27, 42, 0.8);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(64, 121, 140, 0.3);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 2px;
+            background: linear-gradient(90deg, #4cc9f0, #4361ee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            color: #b0c4de;
+        }
+        
+        .author {
+            font-size: 0.85rem;
+            color: #4cc9f0;
+            font-weight: 600;
+            background: rgba(76, 201, 240, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .main-layout {
+            display: flex;
+            gap: 6px;
+            height: calc(100vh - 62px);
+        }
+        
+        .presets-section {
+            flex: 1;
+            min-width: 220px;
+            max-width: 280px;
+            background: rgba(13, 27, 42, 0.8);
+            border-radius: 8px;
+            padding: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(64, 121, 140, 0.3);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+        
+        .simulation-section {
+            flex: 1.8;
+            min-width: 450px;
+            background: rgba(5, 15, 30, 0.9);
+            border-radius: 8px;
+            padding: 6px;
+            border: 1px solid rgba(64, 121, 140, 0.3);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .trajectory-equation-float {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(5, 15, 30, 0.85);
+            border-radius: 6px;
+            padding: 6px;
+            border: 1px solid rgba(76, 201, 240, 0.5);
+            z-index: 10;
+            max-width: 200px;
+            opacity: 0.9;
+        }
+        
+        .trajectory-equation-float .title {
+            font-size: 0.8rem;
+            color: #4cc9f0;
+            margin-bottom: 3px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .trajectory-equation-float .math {
+            font-size: 0.75rem;
+            color: #e0e1dd;
+            text-align: center;
+        }
+        
+        #motionCanvas {
+            flex: 1;
+            width: 100%;
+            display: block;
+            background: #050f1e;
+            border-radius: 6px;
+        }
+        
+        .equations-section {
+            flex: 1;
+            min-width: 280px;
+            max-width: 320px;
+            background: rgba(13, 27, 42, 0.8);
+            border-radius: 8px;
+            padding: 6px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(64, 121, 140, 0.3);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .control-panel {
+            background: rgba(13, 27, 42, 0.8);
+            border-radius: 6px;
+            padding: 6px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(64, 121, 140, 0.3);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 6px;
+            margin-top: 6px;
+        }
+        
+        .section-title {
+            font-size: 1rem;
+            margin-bottom: 4px;
+            padding-bottom: 3px;
+            border-bottom: 2px solid #4361ee;
+            color: #4cc9f0;
+        }
+        
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        
+        .preset-btn {
+            padding: 6px 5px;
+            background: rgba(25, 55, 109, 0.5);
+            border: 1px solid rgba(67, 97, 238, 0.4);
+            border-radius: 4px;
+            color: #e0e1dd;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(67, 97, 238, 0.3);
+            border-color: #4361ee;
+        }
+        
+        .preset-btn.active {
+            background: rgba(67, 97, 238, 0.4);
+            border-color: #4cc9f0;
+            box-shadow: 0 0 8px rgba(76, 201, 240, 0.3);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .control-label {
+            font-size: 0.8rem;
+            color: #4cc9f0;
+            font-weight: 600;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(67, 97, 238, 0.2);
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4cc9f0;
+            cursor: pointer;
+            border: 1px solid #4361ee;
+        }
+        
+        .slider-value {
+            min-width: 40px;
+            font-weight: 600;
+            color: #4cc9f0;
+            font-size: 0.8rem;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 6px;
+            grid-column: 1 / -1;
+        }
+        
+        button {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, #00b4d8, #0077b6);
+            color: white;
+        }
+        
+        .btn-pause {
+            background: linear-gradient(135deg, #f48c06, #dc2f02);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, #7209b7, #3a0ca3);
+            color: white;
+        }
+        
+        .equation-card {
+            background: rgba(25, 55, 109, 0.3);
+            border-radius: 6px;
+            padding: 4px;
+            border: 1px solid rgba(67, 97, 238, 0.2);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        
+        .equation-card-title {
+            font-size: 0.9rem;
+            color: #4cc9f0;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(76, 201, 240, 0.2);
+            padding-bottom: 2px;
+            font-weight: 600;
+        }
+        
+        .math-container {
+            padding: 2px;
+            background: rgba(5, 15, 30, 0.6);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 3px;
+            min-height: 28px;
+        }
+        
+        .realtime-data-card {
+            background: rgba(5, 15, 30, 0.8);
+            border-radius: 4px;
+            padding: 3px;
+            border-left: 2px solid #ff9800;
+        }
+        
+        .data-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            color: #90e0ef;
+            margin-bottom: 1px;
+            font-weight: 500;
+        }
+        
+        .data-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #ff9800;
+            line-height: 1.2;
+        }
+        
+        .data-unit {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-left: 3px;
+            color: #b0c4de;
+        }
+        
+        .current-motion {
+            background: rgba(67, 97, 238, 0.15);
+            border-radius: 4px;
+            padding: 6px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(76, 201, 240, 0.3);
+        }
+        
+        .current-motion-title {
+            font-size: 0.9rem;
+            color: #4cc9f0;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        
+        .motion-desc {
+            font-size: 0.75rem;
+            color: #b0c4de;
+            line-height: 1.2;
+        }
+        
+        .axis-label {
+            position: absolute;
+            color: #4cc9f0;
+            font-weight: bold;
+            font-size: 11px;
+            background: rgba(5, 15, 30, 0.7);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        #x-axis-label {
+            bottom: 6px;
+            right: 6px;
+        }
+        
+        #y-axis-label {
+            top: 6px;
+            left: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>二维平面运动模拟器</h1>
+                <p class="subtitle">8种二维平面运动 | 轨迹永久保留 | 矢量箭头优化 | 数据完整显示</p>
+            </div>
+            <div class="author">作者：xatu_bai</div>
+        </header>
+        
+        <div class="main-layout">
+            <div class="presets-section">
+                <h2 class="section-title">🏃 运动类型</h2>
+                <div class="current-motion">
+                    <div class="current-motion-title">📌 当前：<span id="current-motion-name">匀加速直线运动</span></div>
+                    <div class="motion-desc" id="current-motion-desc">加速度恒定，速度均匀变化。基础一维运动，扩展至二维平面。</div>
+                </div>
+                <div class="preset-grid">
+                    <button class="preset-btn active" data-index="0">1. 匀加速直线运动</button>
+                    <button class="preset-btn" data-index="1">2. 平抛运动</button>
+                    <button class="preset-btn" data-index="2">3. 斜抛运动</button>
+                    <button class="preset-btn" data-index="3">4. 匀速圆周运动</button>
+                    <button class="preset-btn" data-index="4">5. 利萨茹图形运动</button>
+                    <button class="preset-btn" data-index="5">6. 玫瑰线运动</button>
+                    <button class="preset-btn" data-index="6">7. 螺旋线运动</button>
+                    <button class="preset-btn" data-index="7">8. 摆线运动</button>
+                </div>
+            </div>
+            
+            <div class="simulation-section">
+                <div class="trajectory-equation-float">
+                    <div class="title">轨迹方程</div>
+                    <div class="math" id="trajectory-equation-float">
+                        \[ y = 0 \]
+                    </div>
+                </div>
+                
+                <canvas id="motionCanvas"></canvas>
+                <div class="axis-label" id="x-axis-label">X (米)</div>
+                <div class="axis-label" id="y-axis-label">Y (米)</div>
+                
+                <div class="control-panel">
+                    <div class="control-group">
+                        <div class="control-label">时间控制</div>
+                        <div class="slider-container">
+                            <input type="range" id="time-slider" min="0" max="100" value="0" step="0.1">
+                            <div class="slider-value" id="time-value">0.00 s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="control-label">时间缩放</div>
+                        <div class="slider-container">
+                            <input type="range" id="time-scale" min="0.1" max="5" value="1" step="0.1">
+                            <div class="slider-value" id="time-scale-value">1.0x</div>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn-start" id="start-btn">▶️ 开始模拟</button>
+                        <button class="btn-pause" id="pause-btn">⏸️ 暂停/继续</button>
+                        <button class="btn-reset" id="reset-btn">🔄 重置</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="equations-section">
+                <h2 class="section-title">📊 运动方程与实时数据</h2>
+                
+                <div class="equation-card">
+                    <div class="equation-card-title">位置方程</div>
+                    <div class="math-container" id="param-equation">
+                        \[
+                        \begin{cases}
+                        x(t) = \frac{1}{2} a t^2 \\
+                        y(t) = 0
+                        \end{cases}
+                        \]
+                    </div>
+                    <div class="realtime-data-card">
+                        <div class="data-label">实时位置</div>
+                        <div class="data-value">(<span id="pos-x">0.00</span>, <span id="pos-y">0.00</span>)<span class="data-unit">米</span></div>
+                    </div>
+                </div>
+                
+                <div class="equation-card">
+                    <div class="equation-card-title">速度方程</div>
+                    <div class="math-container" id="velocity-equation">
+                        \[
+                        \begin{cases}
+                        v_x(t) = a t \\
+                        v_y(t) = 0
+                        \end{cases}
+                        \]
+                    </div>
+                    <div class="realtime-data-card">
+                        <div class="data-label">实时速度</div>
+                        <div class="data-value">(<span id="vel-x">0.00</span>, <span id="vel-y">0.00</span>)<span class="data-unit">米/秒</span></div>
+                        <div class="data-label" style="margin-top:2px;">速度大小</div>
+                        <div class="data-value"><span id="speed">0.00</span><span class="data-unit">米/秒</span></div>
+                    </div>
+                </div>
+                
+                <div class="equation-card">
+                    <div class="equation-card-title">加速度方程</div>
+                    <div class="math-container" id="acceleration-equation">
+                        \[
+                        \begin{cases}
+                        a_x(t) = a \\
+                        a_y(t) = 0
+                        \end{cases}
+                        \]
+                    </div>
+                    <div class="realtime-data-card">
+                        <div class="data-label">实时加速度</div>
+                        <div class="data-value">(<span id="acc-x">0.00</span>, <span id="acc-y">0.00</span>)<span class="data-unit">米/秒²</span></div>
+                        <div class="data-label" style="margin-top:2px;">加速度大小</div>
+                        <div class="data-value"><span id="acc-magnitude">0.00</span><span class="data-unit">米/秒²</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const motionPresets = [
+            {
+                name: "匀加速直线运动",
+                description: "加速度恒定，速度均匀变化。基础一维运动，扩展至二维平面。",
+                paramEquation: { x: "0.5 * t * t", y: "0" },
+                latexParam: "\\begin{cases}\nx(t) = \\frac{1}{2} a t^2 \\\\\ny(t) = 0\n\\end{cases}",
+                latexTrajectory: "y = 0",
+                latexVelocity: "\\begin{cases}\nv_x(t) = a t \\\\\nv_y(t) = 0\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = a \\\\\na_y(t) = 0\n\\end{cases}",
+                maxTime: 10,
+                trajKeepAll: true
+            },
+            {
+                name: "平抛运动",
+                description: "水平匀速，竖直匀加速。典型二维抛体运动。",
+                paramEquation: { x: "3 * t", y: "-0.5 * 9.8 * t * t" },
+                latexParam: "\\begin{cases}\nx(t) = v_0 t \\\\\ny(t) = -\\frac{1}{2} g t^2\n\\end{cases}",
+                latexTrajectory: "y = -\\frac{g}{2v_0^2} x^2",
+                latexVelocity: "\\begin{cases}\nv_x(t) = v_0 \\\\\nv_y(t) = -g t\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = 0 \\\\\na_y(t) = -g\n\\end{cases}",
+                maxTime: 6,
+                trajKeepAll: true
+            },
+            {
+                name: "斜抛运动",
+                description: "有初速度的二维抛体运动。经典平面曲线运动。",
+                paramEquation: { 
+                    x: "10 * Math.cos(Math.PI/4) * t", 
+                    y: "10 * Math.sin(Math.PI/4) * t - 0.5 * 9.8 * t * t" 
+                },
+                latexParam: "\\begin{cases}\nx(t) = v_0 \\cos\\theta \\cdot t \\\\\ny(t) = v_0 \\sin\\theta \\cdot t - \\frac{1}{2} g t^2\n\\end{cases}",
+                latexTrajectory: "y = x \\tan\\theta - \\frac{g}{2v_0^2 \\cos^2\\theta} x^2",
+                latexVelocity: "\\begin{cases}\nv_x(t) = v_0 \\cos\\theta \\\\\nv_y(t) = v_0 \\sin\\theta - g t\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = 0 \\\\\na_y(t) = -g\n\\end{cases}",
+                maxTime: 6,
+                trajKeepAll: true
+            },
+            {
+                name: "匀速圆周运动",
+                description: "典型二维曲线运动，向心加速度恒定。",
+                paramEquation: { x: "6 * Math.cos(t)", y: "6 * Math.sin(t)" },
+                latexParam: "\\begin{cases}\nx(t) = R \\cos(\\omega t) \\\\\ny(t) = R \\sin(\\omega t)\n\\end{cases}",
+                latexTrajectory: "x^2 + y^2 = R^2",
+                latexVelocity: "\\begin{cases}\nv_x(t) = -R\\omega \\sin(\\omega t) \\\\\nv_y(t) = R\\omega \\cos(\\omega t)\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = -R\\omega^2 \\cos(\\omega t) \\\\\na_y(t) = -R\\omega^2 \\sin(\\omega t)\n\\end{cases}",
+                maxTime: 12.56,
+                trajKeepAll: true
+            },
+            {
+                name: "利萨茹图形运动",
+                description: "正交简谐振动合成的复杂二维图形。",
+                paramEquation: { x: "4 * Math.cos(3 * t)", y: "4 * Math.sin(2 * t)" },
+                latexParam: "\\begin{cases}\nx(t) = A \\cos(n \\omega t) \\\\\ny(t) = B \\sin(m \\omega t)\n\\end{cases}",
+                latexTrajectory: "\\frac{x^2}{16} + \\frac{y^2}{16} - \\frac{xy}{8}\\cos\\phi = \\sin^2\\phi",
+                latexVelocity: "\\begin{cases}\nv_x(t) = -12 \\sin(3t) \\\\\nv_y(t) = 8 \\cos(2t)\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = -36 \\cos(3t) \\\\\na_y(t) = -16 \\sin(2t)\n\\end{cases}",
+                maxTime: 12.56,
+                trajKeepAll: true
+            },
+            {
+                name: "玫瑰线运动",
+                description: "极坐标下的二维花瓣曲线运动。",
+                paramEquation: { x: "4 * Math.sin(5 * t) * Math.cos(t)", y: "4 * Math.sin(5 * t) * Math.sin(t)" },
+                latexParam: "\\begin{cases}\nx(t) = a \\sin(n \\omega t) \\cos(\\omega t) \\\\\ny(t) = a \\sin(n \\omega t) \\sin(\\omega t)\n\\end{cases}",
+                latexTrajectory: "r = 4 \\sin(5\\theta)",
+                latexVelocity: "\\begin{cases}\nv_x = 4[5\\cos(5t)\\cos t - \\sin(5t)\\sin t] \\\\\nv_y = 4[5\\cos(5t)\\sin t + \\sin(5t)\\cos t]\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x = -4[26\\sin(5t)\\cos t + 10\\cos(5t)\\sin t] \\\\\na_y = -4[26\\sin(5t)\\sin t - 10\\cos(5t)\\cos t]\n\\end{cases}",
+                maxTime: 12.56,
+                trajKeepAll: true
+            },
+            {
+                name: "螺旋线运动",
+                description: "二维平面螺旋线运动，半径随时间递增。",
+                paramEquation: { x: "t * Math.cos(t)", y: "t * Math.sin(t)" },
+                latexParam: "\\begin{cases}\nx(t) = kt \\cos(\\omega t) \\\\\ny(t) = kt \\sin(\\omega t)\n\\end{cases}",
+                latexTrajectory: "r = kt",
+                latexVelocity: "\\begin{cases}\nv_x(t) = k\\cos(\\omega t) - kt\\omega \\sin(\\omega t) \\\\\nv_y(t) = k\\sin(\\omega t) + kt\\omega \\cos(\\omega t)\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = -2k\\omega \\sin(\\omega t) - kt\\omega^2 \\cos(\\omega t) \\\\\na_y(t) = 2k\\omega \\cos(\\omega t) - kt\\omega^2 \\sin(\\omega t)\n\\end{cases}",
+                maxTime: 15,
+                trajKeepAll: true
+            },
+            {
+                name: "摆线运动",
+                description: "圆周上一点沿直线滚动的二维摆线运动。",
+                paramEquation: { x: "2*(t - Math.sin(t))", y: "2*(1 - Math.cos(t))" },
+                latexParam: "\\begin{cases}\nx(t) = R(\\omega t - \\sin\\omega t) \\\\\ny(t) = R(1 - \\cos\\omega t)\n\\end{cases}",
+                latexTrajectory: "x = R(\\theta - \\sin\\theta)",
+                latexVelocity: "\\begin{cases}\nv_x(t) = R\\omega(1 - \\cos\\omega t) \\\\\nv_y(t) = R\\omega \\sin\\omega t\n\\end{cases}",
+                latexAcceleration: "\\begin{cases}\na_x(t) = R\\omega^2 \\sin\\omega t \\\\\na_y(t) = R\\omega^2 \\cos\\omega t\n\\end{cases}",
+                maxTime: 15,
+                trajKeepAll: true
+            }
+        ];
+
+        const canvas = document.getElementById('motionCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const timeSlider = document.getElementById('time-slider');
+        const timeValue = document.getElementById('time-value');
+        const timeScale = document.getElementById('time-scale');
+        const timeScaleValue = document.getElementById('time-scale-value');
+        
+        const posXElement = document.getElementById('pos-x');
+        const posYElement = document.getElementById('pos-y');
+        const velXElement = document.getElementById('vel-x');
+        const velYElement = document.getElementById('vel-y');
+        const accXElement = document.getElementById('acc-x');
+        const accYElement = document.getElementById('acc-y');
+        const speedElement = document.getElementById('speed');
+        const accMagnitudeElement = document.getElementById('acc-magnitude');
+        
+        const paramEquationElement = document.getElementById('param-equation');
+        const trajectoryEquationFloat = document.getElementById('trajectory-equation-float');
+        const velocityEquationElement = document.getElementById('velocity-equation');
+        const accelerationEquationElement = document.getElementById('acceleration-equation');
+        
+        const currentMotionName = document.getElementById('current-motion-name');
+        const currentMotionDesc = document.getElementById('current-motion-desc');
+        const presetButtons = document.querySelectorAll('.preset-btn');
+
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            drawGrid();
+        }
+        
+        let isAnimating = false;
+        let animationId = null;
+        let currentTime = 0;
+        let maxTime = 10;
+        let timeScaleFactor = 1.0;
+        let positions = [];
+        let currentMotionIndex = 0;
+        
+        function toCanvasX(x) {
+            return canvas.width / 2 + x * 15;
+        }
+        
+        function toCanvasY(y) {
+            return canvas.height / 2 - y * 15;
+        }
+        
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(64, 121, 140, 0.15)';
+            ctx.lineWidth = 1;
+            
+            for (let x = -15; x <= 15; x++) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(x), 0);
+                ctx.lineTo(toCanvasX(x), canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = -15; y <= 15; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, toCanvasY(y));
+                ctx.lineTo(canvas.width, toCanvasY(y));
+                ctx.stroke();
+            }
+            
+            ctx.strokeStyle = '#4cc9f0';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#4cc9f0';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            
+            for (let x = -10; x <= 10; x += 2) {
+                if (x === 0) continue;
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(x), canvas.height / 2 - 5);
+                ctx.lineTo(toCanvasX(x), canvas.height / 2 + 5);
+                ctx.stroke();
+                ctx.fillText(x.toString(), toCanvasX(x), canvas.height / 2 + 8);
+            }
+            
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let y = -10; y <= 10; y += 2) {
+                if (y === 0) continue;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 - 5, toCanvasY(y));
+                ctx.lineTo(canvas.width / 2 + 5, toCanvasY(y));
+                ctx.stroke();
+                ctx.fillText(y.toString(), canvas.width / 2 - 8, toCanvasY(y));
+            }
+            
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText('0', canvas.width / 2 + 5, canvas.height / 2 + 5);
+        }
+        
+        function computeMotion(t, motionIndex) {
+            const motion = motionPresets[motionIndex];
+            try {
+                const xFunc = new Function('t', 'return ' + motion.paramEquation.x);
+                const yFunc = new Function('t', 'return ' + motion.paramEquation.y);
+                
+                const x = xFunc(t);
+                const y = yFunc(t);
+                
+                const dt = 0.001;
+                
+                const xNext = xFunc(t + dt);
+                const yNext = yFunc(t + dt);
+                const vx = (xNext - x) / dt;
+                const vy = (yNext - y) / dt;
+                
+                const xNext2 = xFunc(t + 2 * dt);
+                const yNext2 = yFunc(t + 2 * dt);
+                const vxNext = (xNext2 - xNext) / dt;
+                const vyNext = (yNext2 - yNext) / dt;
+                const ax = (vxNext - vx) / dt;
+                const ay = (vyNext - vy) / dt;
+                
+                const speed = Math.sqrt(vx * vx + vy * vy);
+                const accMagnitude = Math.sqrt(ax * ax + ay * ay);
+                
+                return {
+                    position: { x, y },
+                    velocity: { x: vx, y: vy },
+                    acceleration: { x: ax, y: ay },
+                    speed,
+                    accMagnitude
+                };
+            } catch (error) {
+                console.error('计算运动时出错:', error);
+                return {
+                    position: { x: 0, y: 0 },
+                    velocity: { x: 0, y: 0 },
+                    acceleration: { x: 0, y: 0 },
+                    speed: 0,
+                    accMagnitude: 0
+                };
+            }
+        }
+        
+        function drawParticle(x, y) {
+            const canvasX = toCanvasX(x);
+            const canvasY = toCanvasY(y);
+            
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 7, 0, Math.PI * 2);
+            
+            const gradient = ctx.createRadialGradient(
+                canvasX, canvasY, 3,
+                canvasX, canvasY, 7
+            );
+            gradient.addColorStop(0, '#ff4081');
+            gradient.addColorStop(1, '#c2185b');
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+        }
+        
+        function drawTrajectory() {
+            if (positions.length < 2) return;
+            
+            const gradient = ctx.createLinearGradient(
+                toCanvasX(positions[0].x), toCanvasX(positions[0].y),
+                toCanvasX(positions[positions.length-1].x), toCanvasX(positions[positions.length-1].y)
+            );
+            gradient.addColorStop(0, 'rgba(76, 201, 240, 0.9)');
+            gradient.addColorStop(1, 'rgba(67, 97, 238, 0.5)');
+            
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(positions[0].x), toCanvasY(positions[0].y));
+            
+            for (let i = 1; i < positions.length; i++) {
+                ctx.lineTo(toCanvasX(positions[i].x), toCanvasY(positions[i].y));
+            }
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+        
+        function drawVector(x, y, vx, vy, color, scale = 1, label = '') {
+            const canvasX = toCanvasX(x);
+            const canvasY = toCanvasY(y);
+            const vectorLength = Math.sqrt(vx * vx + vy * vy);
+            
+            if (vectorLength < 0.01) return;
+            
+            // 调整矢量长度显示
+            let displayLength;
+            if (color === '#ff9800') { // 加速度矢量
+                displayLength = Math.min(vectorLength * scale * 40, 80); // 减小加速度矢量长度
+            } else { // 速度矢量
+                displayLength = Math.min(vectorLength * scale * 20, 100); // 保持速度矢量
+            }
+            
+            const scaleFactor = displayLength / vectorLength;
+            
+            const endX = canvasX + vx * scaleFactor;
+            const endY = canvasY - vy * scaleFactor;
+            
+            // 绘制矢量线
+            ctx.beginPath();
+            ctx.moveTo(canvasX, canvasY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 绘制箭头
+            const angle = Math.atan2(-vy, vx);
+            const arrowLength = 10;
+            
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+                endX - arrowLength * Math.cos(angle - Math.PI / 6),
+                endY - arrowLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+                endX - arrowLength * Math.cos(angle + Math.PI / 6),
+                endY - arrowLength * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 添加标签
+            if (label) {
+                ctx.fillStyle = color;
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(label, (canvasX + endX) / 2, (canvasY + endY) / 2 - 8);
+            }
+        }
+        
+        function updateAllDisplay(motion) {
+            // 确保加速度数值正确更新
+            accXElement.textContent = motion.acceleration.x.toFixed(2);
+            accYElement.textContent = motion.acceleration.y.toFixed(2);
+            accMagnitudeElement.textContent = motion.accMagnitude.toFixed(2);
+            
+            posXElement.textContent = motion.position.x.toFixed(2);
+            posYElement.textContent = motion.position.y.toFixed(2);
+            velXElement.textContent = motion.velocity.x.toFixed(2);
+            velYElement.textContent = motion.velocity.y.toFixed(2);
+            speedElement.textContent = motion.speed.toFixed(2);
+        }
+        
+        function updateEquationsDisplay(motionIndex) {
+            const motion = motionPresets[motionIndex];
+            
+            currentMotionName.textContent = motion.name;
+            currentMotionDesc.textContent = motion.description;
+            
+            paramEquationElement.innerHTML = `\\[ ${motion.latexParam} \\]`;
+            trajectoryEquationFloat.innerHTML = `\\[ ${motion.latexTrajectory} \\]`;
+            velocityEquationElement.innerHTML = `\\[ ${motion.latexVelocity} \\]`;
+            accelerationEquationElement.innerHTML = `\\[ ${motion.latexAcceleration} \\]`;
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise([
+                    paramEquationElement,
+                    trajectoryEquationFloat,
+                    velocityEquationElement,
+                    accelerationEquationElement
+                ]).then(() => {
+                    const floatMath = trajectoryEquationFloat.querySelector('mjx-container');
+                    if (floatMath) {
+                        floatMath.style.maxWidth = '180px';
+                        floatMath.style.fontSize = '0.75rem';
+                    }
+                    const mathElements = document.querySelectorAll('.math-container mjx-container');
+                    mathElements.forEach(el => {
+                        el.style.maxHeight = '100%';
+                        el.style.width = '100%';
+                    });
+                });
+            }
+        }
+        
+        function animate() {
+            if (!isAnimating) return;
+            
+            drawGrid();
+            
+            const motion = computeMotion(currentTime, currentMotionIndex);
+            
+            positions.push({...motion.position});
+            
+            drawTrajectory();
+            
+            // 调整矢量缩放参数
+            drawVector(
+                motion.position.x, 
+                motion.position.y, 
+                motion.velocity.x, 
+                motion.velocity.y, 
+                '#4caf50', 
+                0.4, // 保持速度矢量缩放
+                'v'
+            );
+            
+            drawVector(
+                motion.position.x, 
+                motion.position.y, 
+                motion.acceleration.x, 
+                motion.acceleration.y, 
+                '#ff9800', 
+                0.6, // 适当减小加速度矢量缩放
+                'a'
+            );
+            
+            drawParticle(motion.position.x, motion.position.y);
+            updateAllDisplay(motion);
+            
+            currentTime += 0.016 * timeScaleFactor;
+            
+            const sliderValue = (currentTime / maxTime) * 100;
+            timeSlider.value = sliderValue;
+            timeValue.textContent = currentTime.toFixed(2) + ' s';
+            
+            if (currentTime >= maxTime) {
+                stopAnimation();
+            } else {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        function startAnimation() {
+            if (isAnimating) return;
+            
+            isAnimating = true;
+            
+            if (currentTime >= maxTime) {
+                resetAnimation();
+            }
+            
+            animate();
+            startBtn.innerHTML = '🔄 模拟中...';
+            startBtn.disabled = true;
+        }
+        
+        function stopAnimation() {
+            isAnimating = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            startBtn.innerHTML = '▶️ 开始模拟';
+            startBtn.disabled = false;
+        }
+        
+        function resetAnimation() {
+            stopAnimation();
+            currentTime = 0;
+            positions = [];
+            timeSlider.value = 0;
+            timeValue.textContent = '0.00 s';
+            drawGrid();
+            
+            const initialMotion = computeMotion(0, currentMotionIndex);
+            updateAllDisplay(initialMotion);
+        }
+        
+        function selectPresetMotion(index) {
+            currentMotionIndex = index;
+            maxTime = motionPresets[index].maxTime;
+            
+            presetButtons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            updateEquationsDisplay(index);
+            
+            resetAnimation();
+            resizeCanvas();
+        }
+        
+        startBtn.addEventListener('click', startAnimation);
+        
+        pauseBtn.addEventListener('click', () => {
+            if (isAnimating) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+        });
+        
+        resetBtn.addEventListener('click', resetAnimation);
+        
+        timeSlider.addEventListener('input', () => {
+            const sliderValue = parseFloat(timeSlider.value);
+            currentTime = (sliderValue / 100) * maxTime;
+            timeValue.textContent = currentTime.toFixed(2) + ' s';
+            
+            if (!isAnimating) {
+                const motion = computeMotion(currentTime, currentMotionIndex);
+                drawGrid();
+                drawTrajectory();
+                
+                // 调整矢量缩放参数
+                drawVector(
+                    motion.position.x, 
+                    motion.position.y, 
+                    motion.velocity.x, 
+                    motion.velocity.y, 
+                    '#4caf50', 
+                    0.4, // 保持速度矢量缩放
+                    'v'
+                );
+                
+                drawVector(
+                    motion.position.x, 
+                    motion.position.y, 
+                    motion.acceleration.x, 
+                    motion.acceleration.y, 
+                    '#ff9800', 
+                    0.6, // 适当减小加速度矢量缩放
+                    'a'
+                );
+                
+                drawParticle(motion.position.x, motion.position.y);
+                updateAllDisplay(motion);
+            }
+        });
+        
+        timeScale.addEventListener('input', () => {
+            timeScaleFactor = parseFloat(timeScale.value);
+            timeScaleValue.textContent = timeScaleFactor.toFixed(1) + 'x';
+        });
+        
+        presetButtons.forEach((button, index) => {
+            button.addEventListener('click', () => {
+                selectPresetMotion(index);
+            });
+        });
+        
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            
+            if (!isAnimating) {
+                const motion = computeMotion(currentTime, currentMotionIndex);
+                drawGrid();
+                drawTrajectory();
+                
+                // 调整矢量缩放参数
+                drawVector(
+                    motion.position.x, 
+                    motion.position.y, 
+                    motion.velocity.x, 
+                    motion.velocity.y, 
+                    '#4caf50', 
+                    0.4, // 保持速度矢量缩放
+                    'v'
+                );
+                
+                drawVector(
+                    motion.position.x, 
+                    motion.position.y, 
+                    motion.acceleration.x, 
+                    motion.acceleration.y, 
+                    '#ff9800', 
+                    0.6, // 适当减小加速度矢量缩放
+                    'a'
+                );
+                
+                drawParticle(motion.position.x, motion.position.y);
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case ' ':
+                    if (isAnimating) {
+                        stopAnimation();
+                    } else {
+                        startAnimation();
+                    }
+                    e.preventDefault();
+                    break;
+                case 'r':
+                case 'R':
+                    resetAnimation();
+                    break;
+                case 'ArrowLeft':
+                    if (timeScaleFactor > 0.1) {
+                        timeScaleFactor = Math.max(0.1, timeScaleFactor - 0.1);
+                        timeScale.value = timeScaleFactor;
+                        timeScaleValue.textContent = timeScaleFactor.toFixed(1) + 'x';
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (timeScaleFactor < 5) {
+                        timeScaleFactor = Math.min(5, timeScaleFactor + 0.1);
+                        timeScale.value = timeScaleFactor;
+                        timeScaleValue.textContent = timeScaleFactor.toFixed(1) + 'x';
+                    }
+                    break;
+                case '1': case '2': case '3': case '4':
+                case '5': case '6': case '7': case '8':
+                    const index = parseInt(e.key) - 1;
+                    if (index >= 0 && index < motionPresets.length) {
+                        selectPresetMotion(index);
+                    }
+                    break;
+            }
+        });
+        
+        resizeCanvas();
+        selectPresetMotion(0);
+        
+        setTimeout(() => {
+            if (window.MathJax) {
+                MathJax.typesetPromise().then(() => {
+                    const allMathElements = document.querySelectorAll('mjx-container');
+                    allMathElements.forEach(el => {
+                        el.style.overflow = 'hidden';
+                        el.style.maxWidth = '100%';
+                    });
+                    const floatMath = trajectoryEquationFloat.querySelector('mjx-container');
+                    if (floatMath) {
+                        floatMath.style.maxWidth = '180px';
+                        floatMath.style.fontSize = '0.75rem';
+                    }
+                    
+                    const initMotion = computeMotion(0, 0);
+                    updateAllDisplay(initMotion);
+                });
+            }
+        }, 500);
+    </script>
+</body>
+</html>

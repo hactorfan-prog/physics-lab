@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>氢原子光谱现象仿真</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "微软雅黑", Arial, sans-serif;
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 400px 200px;
+            gap: 20px;
+        }
+        .atom-box {
+            grid-column: 1;
+            grid-row: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .spectrum-box {
+            grid-column: 1;
+            grid-row: 2;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .control-box {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .canvas-container {
+            width: 100%;
+            height: calc(100% - 40px);
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #fafafa;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #btn-jump {
+            background-color: #3498db;
+        }
+        #btn-reset {
+            background-color: #2ecc71;
+        }
+        #btn-clear {
+            background-color: #95a5a6;
+        }
+        .info-text {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4fc;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.6;
+            font-family: Consolas, monospace;
+        }
+        .spectrum-scale {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <!-- 修改标题区域：添加副标题、右侧作者 -->
+    <div style="text-align: center; margin-bottom: 20px; position: relative;">
+        <h1>氢原子光谱现象仿真
+            <span style="font-size: 16px; font-weight: normal; margin-left: 20px;">—— 基于玻尔氢原子理论的能级跃迁可视化</span>
+        </h1>
+        <span style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #666;">作者：xatu_bai</span>
+    </div>
+
+    <div class="container">
+        <div class="atom-box">
+            <h2>氢原子能级跃迁仿真</h2>
+            <div class="canvas-container">
+                <canvas id="atomCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="spectrum-box">
+            <h2>发射光谱（莱曼/巴尔末/帕邢系）</h2>
+            <div class="canvas-container">
+                <canvas id="spectrumCanvas"></canvas>
+            </div>
+            <div class="spectrum-scale">
+                <span>莱曼系(紫外)</span>
+                <span>巴尔末系(可见光)</span>
+                <span>帕邢系(红外)</span>
+            </div>
+        </div>
+
+        <div class="control-box">
+            <h2>控制面板</h2>
+            <div class="control-group">
+                <label for="n-level">初始能级 (n=2-5)</label>
+                <select id="n-level">
+                    <option value="5">n=5</option>
+                    <option value="4">n=4</option>
+                    <option value="3" selected>n=3</option>
+                    <option value="2">n=2</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="k-level">跃迁能级 (k=1-3)</label>
+                <select id="k-level">
+                    <option value="1">k=1 (莱曼系)</option>
+                    <option value="2" selected>k=2 (巴尔末系)</option>
+                    <option value="3">k=3 (帕邢系)</option>
+                </select>
+            </div>
+            <button id="btn-jump">开始跃迁（发射光子）</button>
+            <button id="btn-reset">重置电子轨道</button>
+            <button id="btn-clear">清除所有光谱</button>
+            <div class="info-text" id="info-panel">
+                状态：待机<br>
+                电子能级：n=3<br>
+                光谱线数：0条<br>
+                最后跃迁：无<br>
+                波长：-- nm
+            </div>
+        </div>
+    </div>
+
+<script>
+    const atomCanvas = document.getElementById('atomCanvas');
+    const aCtx = atomCanvas.getContext('2d');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+    const sCtx = spectrumCanvas.getContext('2d');
+
+    // 氢原子谱线真实波长数据（nm）
+    const hydrogenSpectrum = {
+        // 莱曼系 (k=1)
+        1: {
+            2: {wavelength: 121.6, color: "#9B30FF"}, // 紫外-紫色
+            3: {wavelength: 102.6, color: "#8A2BE2"}, // 紫外-紫色
+            4: {wavelength: 97.3, color: "#7A00FF"},  // 紫外-紫色
+            5: {wavelength: 95.0, color: "#68228B"}   // 紫外-紫色
+        },
+        // 巴尔末系 (k=2) - 可见光，按真实颜色
+        2: {
+            3: {wavelength: 656.3, color: "#FF0000"}, // 红
+            4: {wavelength: 486.1, color: "#00FF00"}, // 绿
+            5: {wavelength: 434.0, color: "#0000FF"}  // 蓝
+        },
+        // 帕邢系 (k=3)
+        3: {
+            4: {wavelength: 1875, color: "#FF4500"},  // 红外-橙红色
+            5: {wavelength: 1282, color: "#FF6347"}   // 红外-橙红色
+        }
+    };
+
+    // 各谱线系波长范围（用于等比缩放）
+    const wavelengthRanges = {
+        1: {min: 95, max: 122},    // 莱曼系：95-122nm
+        2: {min: 434, max: 657},   // 巴尔末系：434-657nm
+        3: {min: 1282, max: 1875}  // 帕邢系：1282-1875nm
+    };
+
+    // 轨道半径：n=5略小于画布尺寸（画布高度/宽度的45%）
+    const orbitRadii = {1:50, 2:80, 3:110, 4:140, 5:170};
+
+    // 电子状态
+    let electron = {
+        n: 3,           // 当前能级
+        angle: 0,       // 轨道位置
+        targetN: null,  // 目标能级
+        radius: 110,    // 同步n=3的新半径
+        animating: false,
+        progress: 0     // 跃迁动画进度 0-1
+    };
+
+    // 光子状态
+    let photon = {
+        active: false,
+        x: 0, y: 0,
+        vx: 0, vy: 0,
+        color: '#fff',
+        transitionKey: '' // 用于记录是哪个跃迁 (e.g., "3-2")
+    };
+
+    let spectrumLines = [];
+    
+    window.onload = function() {
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+        document.getElementById('btn-jump').addEventListener('click', startJump);
+        document.getElementById('btn-reset').addEventListener('click', resetElectron);
+        document.getElementById('btn-clear').addEventListener('click', clearSpectrum);
+        requestAnimationFrame(animate);
+        drawSpectrum();
+    };
+
+    function resizeCanvases() {
+        atomCanvas.width = atomCanvas.parentElement.clientWidth;
+        atomCanvas.height = atomCanvas.parentElement.clientHeight;
+        spectrumCanvas.width = spectrumCanvas.parentElement.clientWidth;
+        spectrumCanvas.height = spectrumCanvas.parentElement.clientHeight;
+        drawSpectrum();
+    }
+
+    function animate() {
+        updatePhysics();
+        drawAtom();
+        requestAnimationFrame(animate);
+    }
+
+    function updatePhysics() {
+        // 1. 电子公转
+        electron.angle += (0.05 / electron.n);   
+
+        // 2. 跃迁动画 (Ease-in-out)
+        if (electron.animating) {
+            electron.progress += 0.02;
+            if (electron.progress >= 1) {
+                // 跃迁完成
+                electron.animating = false;
+                electron.n = electron.targetN;
+                electron.radius = orbitRadii[electron.n];
+                emitPhoton(); // 发射光子
+            } else {
+                // 插值半径（平滑过渡）
+                const rStart = orbitRadii[electron.targetN ? electron.n : electron.targetN];
+                const rEnd = orbitRadii[electron.targetN];
+                // 平滑函数（ease-in-out）
+                const t = electron.progress;
+                const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                electron.radius = rStart + (rEnd - rStart) * ease;
+            }
+        }
+
+        // 3. 光子运动（速度降低为原来的1/2）
+        if (photon.active) {
+            photon.x += photon.vx;
+            photon.y += photon.vy;
+
+            // 检查是否飞出原子画布边界
+            if (photon.x < 0 || photon.x > atomCanvas.width || 
+                photon.y < 0 || photon.y > atomCanvas.height) {
+                  
+                photon.active = false;
+                // 记录并在光谱仪上显示
+                addSpectrumLineByKey(photon.transitionKey);
+                // 启用按钮
+                document.getElementById('btn-jump').disabled = false;
+                // 更新状态信息
+                const [nStr, kStr] = photon.transitionKey.split('-');
+                const n = parseInt(nStr);
+                const k = parseInt(kStr);
+                const seriesName = k === 1 ? "莱曼系" : k === 2 ? "巴尔末系" : "帕邢系";
+                const wavelength = hydrogenSpectrum[k][n].wavelength;
+                document.getElementById('info-panel').innerHTML = `
+                    状态：稳定<br>
+                    电子能级：n=${electron.n}<br>
+                    光谱线数：${spectrumLines.length}条<br>
+                    最后跃迁：n=${n}→k=${k} (${seriesName})<br>
+                    波长：${wavelength.toFixed(1)} nm
+                `;
+            }
+        }
+    }
+
+    function emitPhoton() {
+        photon.active = true;
+        // 从电子当前位置发射
+        const cx = atomCanvas.width / 2;
+        const cy = atomCanvas.height / 2;
+        photon.x = cx + Math.cos(electron.angle) * electron.radius;
+        photon.y = cy + Math.sin(electron.angle) * electron.radius;
+        
+        // 光子飞行速度降低（从5→2.5），便于观察
+        const speed = 2.5;
+        photon.vx = Math.cos(electron.angle) * speed;
+        photon.vy = Math.sin(electron.angle) * speed;
+    }
+
+    function startJump() {
+        const n = parseInt(document.getElementById('n-level').value);
+        const k = parseInt(document.getElementById('k-level').value);
+
+        if (n <= k) {
+            alert("无法跃迁！\n起始能级 n=" + n + " 必须大于 最终能级 k=" + k + " 才能释放光子。");
+            return;
+        }
+        
+        if (k === 3 && n < 4) {
+            alert("帕邢系(k=3)的跃迁需要n≥4！\n请选择n=4或n=5。");
+            return;
+        }
+
+        const spectrumData = hydrogenSpectrum[k]?.[n];
+        if (!spectrumData) {
+            alert("无效的能级组合！");
+            return;
+        }
+
+        // 更新电子状态
+        electron.n = n; // 瞬移到起点
+        electron.radius = orbitRadii[n];
+        electron.targetN = k;
+        electron.animating = true;
+        electron.progress = 0;
+        
+        // 禁用按钮
+        document.getElementById('btn-jump').disabled = true;
+        
+        // 准备光子
+        photon.color = spectrumData.color;
+        photon.transitionKey = `${n}-${k}`;
+
+        // 更新状态信息
+        const seriesName = k === 1 ? "莱曼系" : k === 2 ? "巴尔末系" : "帕邢系";
+        document.getElementById('info-panel').innerHTML = `
+            状态：跃迁中<br>
+            电子能级：n=${n}→k=${k}<br>
+            光谱线数：${spectrumLines.length}条<br>
+            跃迁类型：${seriesName}<br>
+            波长：${spectrumData.wavelength.toFixed(1)} nm
+        `;
+    }
+
+    function resetElectron() {
+        let n = parseInt(document.getElementById('n-level').value);
+        electron.n = n;
+        electron.radius = orbitRadii[n];
+        electron.animating = false;
+        electron.targetN = null;
+        electron.progress = 0;
+        photon.active = false;
+
+        // 启用按钮
+        document.getElementById('btn-jump').disabled = false;
+
+        document.getElementById('info-panel').innerHTML = `
+            状态：待机<br>
+            电子能级：n=${n}<br>
+            光谱线数：${spectrumLines.length}条<br>
+            最后操作：重置轨道<br>
+            波长：-- nm
+        `;
+    }
+
+    function clearSpectrum() {
+        spectrumLines = [];
+        drawSpectrum();
+        
+        document.getElementById('info-panel').innerHTML = `
+            状态：待机<br>
+            电子能级：n=${electron.n}<br>
+            光谱线数：0条<br>
+            最后操作：清除光谱<br>
+            波长：-- nm
+        `;
+    }
+
+    function addSpectrumLineByKey(key) {
+        // key 格式如 "3-2"
+        const [nStr, kStr] = key.split('-');
+        const n = parseInt(nStr);
+        const k = parseInt(kStr);
+
+        // 检查是否已有相同谱线
+        const existing = spectrumLines.find(line => 
+            line.n === n && line.k === k);
+        if (existing) return;
+        
+        const spectrumData = hydrogenSpectrum[k][n];
+        const wavelength = spectrumData.wavelength;
+        
+        // 计算谱线位置（按波长等比缩放）
+        const range = wavelengthRanges[k];
+        // 归一化到0-1
+        const normalized = (wavelength - range.min) / (range.max - range.min);
+        
+        // 映射到谱线系区域
+        let x;
+        if (k === 1) { // 莱曼系：左侧10%-30%
+            x = 0.10 + normalized * 0.20;
+        } else if (k === 2) { // 巴尔末系：中间35%-65%
+            x = 0.35 + normalized * 0.30;
+        } else { // 帕邢系：右侧70%-90%
+            x = 0.70 + normalized * 0.20;
+        }
+        
+        spectrumLines.push({
+            n: n,
+            k: k,
+            color: spectrumData.color,
+            x: spectrumCanvas.width * x,
+            wavelength: wavelength
+        });
+        
+        // 按波长排序，确保正确显示
+        spectrumLines.sort((a, b) => a.x - b.x);
+        
+        drawSpectrum();
+    }
+
+    function drawAtom() {
+        aCtx.clearRect(0, 0, atomCanvas.width, atomCanvas.height);
+        aCtx.fillStyle = "#2c3e50";
+        aCtx.fillRect(0, 0, atomCanvas.width, atomCanvas.height);
+
+        const cx = atomCanvas.width / 2;
+        const cy = atomCanvas.height / 2;
+
+        // 1. 绘制所有轨道（增强对比度：提高轨道线条亮度和宽度）
+        for (let i = 1; i <= 5; i++) {
+            aCtx.beginPath();
+            aCtx.arc(cx, cy, orbitRadii[i], 0, Math.PI * 2);
+            // 当前所在轨道高亮，其他暗淡（增强对比度）
+            if (i === electron.targetN || (!electron.animating && i === electron.n)) {
+                aCtx.strokeStyle = "rgba(255, 255, 255, 1)"; // 从不透明0.8改为1
+                aCtx.lineWidth = 3; // 从2改为3
+            } else {
+                aCtx.strokeStyle = "rgba(255, 255, 255, 0.5)"; // 从不透明0.3改为0.5
+                aCtx.lineWidth = 2; // 从1改为2
+            }
+            aCtx.setLineDash([5, 3]);
+            aCtx.stroke();
+            aCtx.setLineDash([]);
+            // 标记能级
+            aCtx.fillStyle = "#ecf0f1";
+            aCtx.font = "12px 微软雅黑";
+            aCtx.fillText(`n=${i}`, cx + orbitRadii[i] + 5, cy);
+        }
+
+        // 2. 绘制原子核 (半径12，保持醒目)
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 14, 0, Math.PI * 2);
+        aCtx.fillStyle = "#e74c3c";
+        aCtx.fill();
+        aCtx.fillStyle = "#fff";
+        aCtx.font = "14px 微软雅黑";
+        aCtx.fillText("H⁺", cx - 8, cy + 4);
+
+        // 3. 绘制电子 (半径10，仅显示放大的"-"号，长度翻倍)
+        const ex = cx + Math.cos(electron.angle) * electron.radius;
+        const ey = cy + Math.sin(electron.angle) * electron.radius;
+        
+        aCtx.beginPath();
+        aCtx.arc(ex, ey, 10, 0, Math.PI * 2);
+        aCtx.fillStyle = electron.animating ? "#9b59b6" : "#3498db";
+        aCtx.shadowBlur = 10;
+        aCtx.shadowColor = electron.animating ? "#9b59b6" : "#3498db";
+        aCtx.fill();
+        aCtx.shadowBlur = 0;
+        // 电子"-"号长度翻倍：字号从14px改为24px，位置微调
+        aCtx.fillStyle = "#fff";
+        aCtx.font = "bold 28px 微软雅黑"; // 字号翻倍
+        aCtx.fillText("-", ex - 6, ey + 8); // 位置微调适配更大的"-"号
+
+        // 4. 绘制光子（拖尾效果增强，便于观察）
+        if (photon.active) {
+            aCtx.beginPath();
+            aCtx.arc(photon.x, photon.y, 5, 0, Math.PI*2);
+            aCtx.fillStyle = photon.color;
+            aCtx.fill();
+            
+            // 增强拖尾效果，便于观察飞行轨迹
+            aCtx.beginPath();
+            aCtx.moveTo(photon.x, photon.y);
+            aCtx.lineTo(photon.x - photon.vx * 5, photon.y - photon.vy * 5);
+            aCtx.strokeStyle = photon.color;
+            aCtx.lineWidth = 2;
+            aCtx.stroke();
+        }
+    }
+
+    function drawSpectrum() {
+        sCtx.clearRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+        sCtx.fillStyle = "#1a202c";
+        sCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+
+        // 绘制谱线系区域标签
+        sCtx.fillStyle = "#ffffff";
+        sCtx.font = "14px 微软雅黑";
+        sCtx.fillText("莱曼系 (k=1)", 20, 25);
+        sCtx.fillText("巴尔末系 (k=2)", spectrumCanvas.width * 0.35 + 20, 25);
+        sCtx.fillText("帕邢系 (k=3)", spectrumCanvas.width * 0.70 + 20, 25);
+
+        // 绘制谱线系分隔虚线（增强对比度：颜色从#666改为#ffffff，线宽从1改为2）
+        sCtx.strokeStyle = "#ffffff"; // 颜色改为白色
+        sCtx.lineWidth = 2; // 线宽翻倍
+        sCtx.setLineDash([3, 3]);
+        // 莱曼系与巴尔末系分隔线（30%位置）
+        const divide1X = spectrumCanvas.width * 0.30;
+        sCtx.beginPath();
+        sCtx.moveTo(divide1X, 40);
+        sCtx.lineTo(divide1X, spectrumCanvas.height - 25);
+        sCtx.stroke();
+        // 巴尔末系与帕邢系分隔线（70%位置）
+        const divide2X = spectrumCanvas.width * 0.70;
+        sCtx.beginPath();
+        sCtx.moveTo(divide2X, 40);
+        sCtx.lineTo(divide2X, spectrumCanvas.height - 25);
+        sCtx.stroke();
+        sCtx.setLineDash([]);
+
+        // 绘制所有谱线
+        spectrumLines.forEach(line => {
+            // 绘制细谱线（线宽2px）
+            sCtx.beginPath();
+            sCtx.moveTo(line.x, 40);
+            sCtx.lineTo(line.x, spectrumCanvas.height - 25);
+            sCtx.strokeStyle = line.color;
+            sCtx.lineWidth = 2;
+            sCtx.stroke();
+
+            // 顶部显示能级
+            sCtx.fillStyle = "#ffffff";
+            sCtx.font = "bold 12px 微软雅黑";
+            sCtx.textAlign = "center";
+            sCtx.fillText(`n=${line.n}`, line.x, 35);
+            
+            // 底部显示波长
+            sCtx.fillStyle = "#cccccc";
+            sCtx.font = "11px 微软雅黑";
+            sCtx.fillText(`${line.wavelength.toFixed(1)} nm`, line.x, spectrumCanvas.height - 10);
+            sCtx.textAlign = "left";
+        });
+    }
+
+    function drawWavelengthScale() {}
+</script>
+</body>
+</html>
