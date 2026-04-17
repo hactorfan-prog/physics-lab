@@ -251,9 +251,10 @@
 
                 <div class="tips" style="margin-top: 10px;">
                     <strong>电场线计算说明：</strong><br>
-                    当前页面将电场线绘制为“方向场积分曲线”：先在每个采样点计算库仑场叠加
+                    当前页面将电场线绘制为“切片方向场积分曲线”：先按三维库仑场叠加
                     <span style="font-family:'Courier New', monospace;">E(r)=Σ qᵢ(r-rᵢ)/|r-rᵢ|³</span>，
-                    再沿电场方向进行 RK4 数值积分得到流线。<br>
+                    再取切片平面 <span style="font-family:'Courier New', monospace;">z=surfZ</span> 上的投影
+                    <span style="font-family:'Courier New', monospace;">(Eₓ,Eᵧ)</span>，沿方向场做 RK4 数值积分得到流线。<br>
                     本模型强调“方向”而非步长，便于平滑展示正负电荷周围的场线结构；线条疏密受种子点设置影响，不严格等同于场强大小。
                 </div>
             </div>
@@ -274,7 +275,7 @@
                 
                 <div class="tips">  
                     <strong>算法改进说明：</strong><br>  
-                    支持拖拽电荷实时重算场线；零净电荷时优先闭合“正→负”场线，净负电体系补充来自无穷远的入射场线。
+                    支持拖拽电荷实时重算场线；每条场线都由种子点沿切片方向场进行 RK4 追踪，正电荷沿 +E 方向发射，负电荷沿 -E 方向追踪。
                 </div>
             </div>
             
@@ -351,7 +352,8 @@
         density: 12,
         collisionR: 16,
         arrowSpacing: 76,
-        dedupCell: 11
+        dedupCell: 11,
+        surfZ: 0
     };
 
     function init() {
@@ -406,8 +408,8 @@
     function createDefaultCharges() {
         const spacing = Math.min(canvas.width, canvas.height) * 0.3;
         return [
-            { x: canvas.width / 2 - spacing, y: canvas.height / 2, q: parseInt(slQ1.value), id: 1 },
-            { x: canvas.width / 2 + spacing, y: canvas.height / 2, q: parseInt(slQ2.value), id: 2 }
+            { x: canvas.width / 2 - spacing, y: canvas.height / 2, z: 0, q: parseInt(slQ1.value), id: 1 },
+            { x: canvas.width / 2 + spacing, y: canvas.height / 2, z: 0, q: parseInt(slQ2.value), id: 2 }
         ];
     }
 
@@ -559,15 +561,16 @@
 
     // --- 核心物理计算 ---
 
-    function getField(x, y) {
-        let ex = 0, ey = 0;
+    function Efield3D(px, py, pz) {
+        let ex = 0, ey = 0, ez = 0;
         let minMsg = { distSq: Infinity, charge: null };
 
         for (const c of charges) {
             if (c.q === 0) continue;
-            const dx = x - c.x;
-            const dy = y - c.y;
-            const rSq = dx*dx + dy*dy;
+            const dx = px - c.x;
+            const dy = py - c.y;
+            const dz = pz - (c.z ?? 0);
+            const rSq = dx*dx + dy*dy + dz*dz;
 
             if (rSq < minMsg.distSq) {
                 minMsg.distSq = rSq;
@@ -576,13 +579,45 @@
 
             const r = Math.sqrt(rSq);
             const r3 = r * rSq;
-            if (r3 < 0.1) return { x: 0, y: 0, nearDistSq: rSq, nearCharge: c };
+            if (r3 < 0.1) return { x: 0, y: 0, z: 0, nearDistSq: rSq, nearCharge: c };
 
             ex += c.q * dx / r3;
             ey += c.q * dy / r3;
+            ez += c.q * dz / r3;
         }
 
-        return { x: ex, y: ey, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };
+        return { x: ex, y: ey, z: ez, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };
+    }
+
+    function getSliceField2D(x, y, pz = PARAMS.surfZ) {
+        const f3 = Efield3D(x, y, pz);
+        return { x: f3.x, y: f3.y, nearDistSq: f3.nearDistSq, nearCharge: f3.nearCharge };
+    }
+
+    function unitFieldDir2D(x, y, followDirection, pz = PARAMS.surfZ) {
+        const f = getSliceField2D(x, y, pz);
+        const len = Math.hypot(f.x, f.y);
+        if (len < 1e-8) return null;
+        return { x: (f.x / len) * followDirection, y: (f.y / len) * followDirection };
+    }
+
+    function rk4Step2D(x, y, h, followDirection, pz = PARAMS.surfZ) {
+        const k1 = unitFieldDir2D(x, y, followDirection, pz);
+        if (!k1) return null;
+
+        const k2 = unitFieldDir2D(x + 0.5 * h * k1.x, y + 0.5 * h * k1.y, followDirection, pz);
+        if (!k2) return null;
+
+        const k3 = unitFieldDir2D(x + 0.5 * h * k2.x, y + 0.5 * h * k2.y, followDirection, pz);
+        if (!k3) return null;
+
+        const k4 = unitFieldDir2D(x + h * k3.x, y + h * k3.y, followDirection, pz);
+        if (!k4) return null;
+
+        return {
+            x: x + (h / 6) * (k1.x + 2 * k2.x + 2 * k3.x + k4.x),
+            y: y + (h / 6) * (k1.y + 2 * k2.y + 2 * k3.y + k4.y)
+        };
     }
 
     function getDynamicTraceMargin() {
@@ -601,20 +636,18 @@
         return Math.max(120, Math.min(520, maxPairDistance * 1.2));
     }
 
-    function traceFieldLine(startX, startY, followDirection, traceMargin) {
+    function traceFromSeed2D(startX, startY, followDirection, traceMargin) {
         const path = [{ x: startX, y: startY }];
         let currX = startX;
         let currY = startY;
         let hitCharge = null;
 
         for (let i = 0; i < PARAMS.maxIter; i++) {
-            const f = getField(currX, currY);
-            const len = Math.hypot(f.x, f.y);
-            if (len < 1e-6) break;
+            const next = rk4Step2D(currX, currY, PARAMS.step, followDirection, PARAMS.surfZ);
+            if (!next) break;
 
-            const stepScale = PARAMS.step * followDirection;
-            currX += (f.x / len) * stepScale;
-            currY += (f.y / len) * stepScale;
+            currX = next.x;
+            currY = next.y;
             path.push({ x: currX, y: currY });
 
             if (currX < -traceMargin || currX > canvas.width + traceMargin || currY < -traceMargin || currY > canvas.height + traceMargin) {
@@ -667,82 +700,22 @@
         const lines = [];
         const occupied = new Set();
         const traceMargin = getDynamicTraceMargin();
-        const positiveCharges = charges.filter(c => c.q > 0);
-        const negativeCharges = charges.filter(c => c.q < 0);
-
-        const positiveCount = positiveCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
-        const negativeCount = negativeCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
-        const totalCharge = charges.reduce((sum, c) => sum + c.q, 0);
-        const isBalancedSystem = totalCharge === 0 && positiveCount === negativeCount && positiveCount > 0;
-
-        // 新策略 1：所有正电荷发射（场线原生方向）
-        for (const c of positiveCharges) {
+        
+        for (const c of charges) {
+            if (c.q === 0) continue;
             const count = Math.abs(c.q) * PARAMS.density;
             const startR = PARAMS.collisionR + 2;
-
-            if (isBalancedSystem) {
-                const maxAttempts = Math.max(count * 8, 64);
-                const validPaths = [];
-
-                for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                    const angle = (Math.PI * 2 * attempt) / maxAttempts;
-                    const sx = c.x + Math.cos(angle) * startR;
-                    const sy = c.y + Math.sin(angle) * startR;
-                    const result = traceFieldLine(sx, sy, 1, traceMargin);
-
-                    // 零净电荷体系：只保留闭合到负电荷的场线
-                    if (result.hitCharge && result.hitCharge.q < 0) {
-                        validPaths.push(result.path);
-                    }
-                }
-
-                // 避免只取“前几条命中路径”导致场线偏向单侧：
-                // 从全部可闭合路径中均匀抽样。
-                const pickCount = Math.min(count, validPaths.length);
-                for (let i = 0; i < pickCount; i++) {
-                    const idx = Math.floor((i * validPaths.length) / pickCount);
-                    const path = validPaths[idx];
-                    if (!isPathRedundant(path, occupied)) {
-                        registerPath(path, occupied);
-                        lines.push(path);
-                    }
-                }
-                continue;
-            }
+            const followDirection = c.q > 0 ? 1 : -1;
 
             for (let i = 0; i < count; i++) {
                 const angle = (Math.PI * 2 * i) / count;
                 const sx = c.x + Math.cos(angle) * startR;
                 const sy = c.y + Math.sin(angle) * startR;
-                const result = traceFieldLine(sx, sy, 1, traceMargin);
+                const result = traceFromSeed2D(sx, sy, followDirection, traceMargin);
 
                 if (!isPathRedundant(result.path, occupied)) {
                     registerPath(result.path, occupied);
                     lines.push(result.path);
-                }
-            }
-        }
-
-        // 新策略 2：净负电体系，从负电荷反向追踪补全来自无穷远的场线
-        if (negativeCount > positiveCount) {
-            const deficit = negativeCount - positiveCount;
-            const weightSum = negativeCharges.reduce((sum, c) => sum + Math.abs(c.q), 0);
-
-            for (const c of negativeCharges) {
-                const quota = Math.round(deficit * Math.abs(c.q) / weightSum);
-                for (let i = 0; i < quota; i++) {
-                    const angle = (Math.PI * 2 * i) / Math.max(quota, 1);
-                    const sx = c.x + Math.cos(angle) * (PARAMS.collisionR + 2);
-                    const sy = c.y + Math.sin(angle) * (PARAMS.collisionR + 2);
-
-                    const result = traceFieldLine(sx, sy, -1, traceMargin);
-                    if (result.hitCharge && result.hitCharge.q > 0) continue;
-
-                    const fieldPath = result.path.slice().reverse();
-                    if (!isPathRedundant(fieldPath, occupied)) {
-                        registerPath(fieldPath, occupied);
-                        lines.push(fieldPath);
-                    }
                 }
             }
         }
