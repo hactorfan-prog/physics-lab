@@ -216,7 +216,7 @@
             <p id="subtitle">一对点电荷周围电场中的电场线可视化</p>
         </div>
         <div>
-            <p id="author">作者：xatu_bai</p>
+            <p id="author">作者：fan</p>
         </div>
     </div>
     
@@ -266,7 +266,7 @@
                 
                 <div class="tips">  
                     <strong>算法改进说明：</strong><br>  
-                    支持拖拽电荷实时重算场线；场线采用“正电荷发射 + 净负电补线 + 空间去重”策略，减少重叠并保持方向一致。  
+                    支持拖拽电荷实时重算场线；零净电荷时优先闭合“正→负”场线，净负电体系补充来自无穷远的入射场线。
                 </div>
             </div>
             
@@ -653,13 +653,34 @@
         // 新策略 1：所有正电荷发射（场线原生方向）
         for (const c of positiveCharges) {
             const count = Math.abs(c.q) * PARAMS.density;
+            const startR = PARAMS.collisionR + 2;
+
+            if (isBalancedSystem) {
+                let accepted = 0;
+                let attempt = 0;
+                const maxAttempts = count * 8;
+
+                while (accepted < count && attempt < maxAttempts) {
+                    const angle = (Math.PI * 2 * attempt) / maxAttempts;
+                    const sx = c.x + Math.cos(angle) * startR;
+                    const sy = c.y + Math.sin(angle) * startR;
+                    const result = traceFieldLine(sx, sy, 1);
+
+                    // 零净电荷体系：只保留闭合到负电荷的场线
+                    if (result.hitCharge && result.hitCharge.q < 0) {
+                        lines.push(result.path);
+                        accepted++;
+                    }
+                    attempt++;
+                }
+                continue;
+            }
+
             for (let i = 0; i < count; i++) {
                 const angle = (Math.PI * 2 * i) / count;
-                const startR = PARAMS.collisionR + 2;
                 const sx = c.x + Math.cos(angle) * startR;
                 const sy = c.y + Math.sin(angle) * startR;
                 const result = traceFieldLine(sx, sy, 1);
-                if (isBalancedSystem && (!result.hitCharge || result.hitCharge.q >= 0)) continue;
 
                 if (!isPathRedundant(result.path, occupied)) {
                     registerPath(result.path, occupied);
