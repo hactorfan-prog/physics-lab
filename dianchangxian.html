@@ -135,6 +135,7 @@
         canvas {  
             display: block;  
             background: #000;  
+            touch-action: none;
         }  
   
         .tips {  
@@ -318,6 +319,7 @@
     let charges = [];
     let activeChargeId = null;
     let hoverChargeId = null;
+    let activePointerId = null;
 
     // 电场线颜色 (默认绿色)
     let fieldLineColor = '#4ade80';
@@ -352,9 +354,11 @@
         slDensity.addEventListener('input', updateDensity);
         colorPicker.addEventListener('input', updateColor);
 
-        canvas.addEventListener('mousedown', onPointerDown);
-        canvas.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('mouseup', onPointerUp);
+        canvas.addEventListener('pointerdown', onPointerDown);
+        canvas.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+        canvas.addEventListener('lostpointercapture', onPointerUp);
         canvas.addEventListener('mouseleave', () => {
             if (activeChargeId === null) {
                 hoverChargeId = null;
@@ -502,20 +506,25 @@
     }
 
     function onPointerDown(e) {
+        e.preventDefault();
         const p = getMousePos(e);
         const id = pickCharge(p.x, p.y);
         if (id !== null) {
+            activePointerId = e.pointerId;
             activeChargeId = id;
             hoverChargeId = id;
+            canvas.setPointerCapture(e.pointerId);
             canvas.style.cursor = 'grabbing';
             draw();
         }
     }
 
     function onPointerMove(e) {
+        if (activePointerId !== null && e.pointerId !== activePointerId) return;
         const p = getMousePos(e);
 
         if (activeChargeId !== null) {
+            e.preventDefault();
             const c = charges.find(item => item.id === activeChargeId);
             if (!c) return;
             c.x = p.x;
@@ -533,8 +542,10 @@
         }
     }
 
-    function onPointerUp() {
+    function onPointerUp(e) {
+        if (activePointerId !== null && e && e.pointerId !== activePointerId) return;
         activeChargeId = null;
+        activePointerId = null;
         canvas.style.cursor = hoverChargeId !== null ? 'grab' : 'default';
     }
 
