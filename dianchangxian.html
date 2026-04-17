@@ -248,6 +248,14 @@
                     </div>  
                     <input type="range" id="sl-density" min="1" max="20" step="1" value="12">  
                 </div>
+
+                <div class="tips" style="margin-top: 10px;">
+                    <strong>电场线计算说明：</strong><br>
+                    当前页面将电场线绘制为“方向场积分曲线”：先在每个采样点计算库仑场叠加
+                    <span style="font-family:'Courier New', monospace;">E(r)=Σ qᵢ(r-rᵢ)/|r-rᵢ|³</span>，
+                    再沿电场方向进行 RK4 数值积分得到流线。<br>
+                    本模型强调“方向”而非步长，便于平滑展示正负电荷周围的场线结构；线条疏密受种子点设置影响，不严格等同于场强大小。
+                </div>
             </div>
             
             <div class="control-section">
