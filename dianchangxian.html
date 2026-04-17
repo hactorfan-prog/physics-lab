@@ -135,6 +135,7 @@
         canvas {  
             display: block;  
             background: #000;  
+            touch-action: none;
         }  
   
         .tips {  
@@ -318,6 +319,7 @@
     let charges = [];
     let activeChargeId = null;
     let hoverChargeId = null;
+    let activePointerId = null;
 
     // 电场线颜色 (默认绿色)
     let fieldLineColor = '#4ade80';
@@ -352,9 +354,11 @@
         slDensity.addEventListener('input', updateDensity);
         colorPicker.addEventListener('input', updateColor);
 
-        canvas.addEventListener('mousedown', onPointerDown);
-        canvas.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('mouseup', onPointerUp);
+        canvas.addEventListener('pointerdown', onPointerDown);
+        canvas.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+        canvas.addEventListener('lostpointercapture', onPointerUp);
         canvas.addEventListener('mouseleave', () => {
             if (activeChargeId === null) {
                 hoverChargeId = null;
@@ -502,20 +506,25 @@
     }
 
     function onPointerDown(e) {
+        e.preventDefault();
         const p = getMousePos(e);
         const id = pickCharge(p.x, p.y);
         if (id !== null) {
+            activePointerId = e.pointerId;
             activeChargeId = id;
             hoverChargeId = id;
+            canvas.setPointerCapture(e.pointerId);
             canvas.style.cursor = 'grabbing';
             draw();
         }
     }
 
     function onPointerMove(e) {
+        if (activePointerId !== null && e.pointerId !== activePointerId) return;
         const p = getMousePos(e);
 
         if (activeChargeId !== null) {
+            e.preventDefault();
             const c = charges.find(item => item.id === activeChargeId);
             if (!c) return;
             c.x = p.x;
@@ -533,8 +542,10 @@
         }
     }
 
-    function onPointerUp() {
+    function onPointerUp(e) {
+        if (activePointerId !== null && e && e.pointerId !== activePointerId) return;
         activeChargeId = null;
+        activePointerId = null;
         canvas.style.cursor = hoverChargeId !== null ? 'grab' : 'default';
     }
 
@@ -586,8 +597,17 @@
                 break;
             }
 
-            if (f.nearDistSq < PARAMS.collisionR * PARAMS.collisionR) {
-                hitCharge = f.nearCharge;
+            for (const c of charges) {
+                if (c.q === 0) continue;
+                const dx = currX - c.x;
+                const dy = currY - c.y;
+                if (dx * dx + dy * dy < PARAMS.collisionR * PARAMS.collisionR) {
+                    hitCharge = c;
+                    break;
+                }
+            }
+
+            if (hitCharge) {
                 break;
             }
         }
@@ -627,6 +647,8 @@
 
         const positiveCount = positiveCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
         const negativeCount = negativeCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
+        const totalCharge = charges.reduce((sum, c) => sum + c.q, 0);
+        const isBalancedSystem = totalCharge === 0 && positiveCount === negativeCount && positiveCount > 0;
 
         // 新策略 1：所有正电荷发射（场线原生方向）
         for (const c of positiveCharges) {
@@ -637,6 +659,7 @@
                 const sx = c.x + Math.cos(angle) * startR;
                 const sy = c.y + Math.sin(angle) * startR;
                 const result = traceFieldLine(sx, sy, 1);
+                if (isBalancedSystem && (!result.hitCharge || result.hitCharge.q >= 0)) continue;
 
                 if (!isPathRedundant(result.path, occupied)) {
                     registerPath(result.path, occupied);
