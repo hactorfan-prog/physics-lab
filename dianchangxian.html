@@ -135,6 +135,7 @@
         canvas {  
             display: block;  
             background: #000;  
+            touch-action: none;
         }  
   
         .tips {  
@@ -265,7 +266,7 @@
                 
                 <div class="tips">  
                     <strong>算法改进说明：</strong><br>  
-                    程序会自动识别拓扑结构。当电场线连接正负电荷时，只绘制一次，不再叠加。只有来自无穷远的线才会额外补充绘制。  
+                    支持拖拽电荷实时重算场线；场线采用“正电荷发射 + 净负电补线 + 空间去重”策略，减少重叠并保持方向一致。  
                 </div>
             </div>
             
@@ -298,28 +299,31 @@
     </div>
   
 <script>  
-    const canvas = document.getElementById('canvas');  
-    const ctx = canvas.getContext('2d');  
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
     const canvasContainer = document.getElementById('canvas-container');
 
-    // UI  
-    const slQ1 = document.getElementById('sl-q1');  
-    const slQ2 = document.getElementById('sl-q2');  
+    // UI
+    const slQ1 = document.getElementById('sl-q1');
+    const slQ2 = document.getElementById('sl-q2');
     const slDensity = document.getElementById('sl-density');
     const colorPicker = document.getElementById('color-picker');
-    const txtQ1 = document.getElementById('txt-q1');  
-    const txtQ2 = document.getElementById('txt-q2');  
+    const txtQ1 = document.getElementById('txt-q1');
+    const txtQ2 = document.getElementById('txt-q2');
     const txtDensity = document.getElementById('txt-density');
     const fieldColorName = document.getElementById('field-color-name');
     const colorIndicator = document.getElementById('color-indicator');
     const simDensityDisplay = document.getElementById('sim-density-display');
-  
-    let containerWidth, containerHeight;  
-    let charges = [];  
-    
+
+    let containerWidth, containerHeight;
+    let charges = [];
+    let activeChargeId = null;
+    let hoverChargeId = null;
+    let activePointerId = null;
+
     // 电场线颜色 (默认绿色)
     let fieldLineColor = '#4ade80';
-    
+
     // 颜色名称映射
     const colorNames = {
         '#4ade80': '绿色',
@@ -332,59 +336,98 @@
         '#fbbf24': '黄色'
     };
 
-    // 物理仿真参数  
-    const PARAMS = {  
-        step: 5,            // 步长  
-        maxIter: 1000,      // 最大迭代次数（防止死循环）  
-        density: 12,        // 电荷线密度 (每单位电荷产生多少根线)  
-        collisionR: 15,     // 碰撞判定半径  
-        arrowSpacing: 80    // 箭头间距  
-    };  
-  
-    function init() {  
-        resize();  
-        window.addEventListener('resize', resize);  
-        slQ1.addEventListener('input', update);  
-        slQ2.addEventListener('input', update);  
+    // 物理仿真参数
+    const PARAMS = {
+        step: 4,
+        maxIter: 1400,
+        density: 12,
+        collisionR: 16,
+        arrowSpacing: 76,
+        dedupCell: 11
+    };
+
+    function init() {
+        resize();
+        window.addEventListener('resize', resize);
+        slQ1.addEventListener('input', update);
+        slQ2.addEventListener('input', update);
         slDensity.addEventListener('input', updateDensity);
         colorPicker.addEventListener('input', updateColor);
-        
+
+        canvas.addEventListener('pointerdown', onPointerDown);
+        canvas.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+        canvas.addEventListener('mouseleave', () => {
+            if (activeChargeId === null) {
+                hoverChargeId = null;
+                draw();
+            }
+        });
+
         // 设置颜色选择器的初始值
         colorPicker.value = fieldLineColor;
         colorIndicator.style.backgroundColor = fieldLineColor;
         updateColorName(fieldLineColor);
-        
-        update();  
-    }  
-  
-    function resize() {  
-        // 计算容器尺寸
+
+        update();
+    }
+
+    function resize() {
+        const oldWidth = canvas.width || 0;
+        const oldHeight = canvas.height || 0;
+
         containerWidth = canvasContainer.clientWidth;
         containerHeight = canvasContainer.clientHeight;
-        
+
         canvas.width = containerWidth;
         canvas.height = containerHeight;
-        
-        draw();  
-    }  
-  
-    function update() {  
-        const q1 = parseInt(slQ1.value);  
-        const q2 = parseInt(slQ2.value);  
-          
-        updateText(txtQ1, q1);  
-        updateText(txtQ2, q2);  
-  
-        // 设置电荷位置  
-        const spacing = Math.min(canvas.width, canvas.height) * 0.3;  
-        charges = [  
-            { x: canvas.width/2 - spacing, y: canvas.height/2, q: q1, id: 1 },  
-            { x: canvas.width/2 + spacing, y: canvas.height/2, q: q2, id: 2 }  
-        ];  
-  
-        draw();  
-    }  
-    
+
+        if (charges.length > 0 && oldWidth > 0 && oldHeight > 0) {
+            charges.forEach(c => {
+                c.x = (c.x / oldWidth) * canvas.width;
+                c.y = (c.y / oldHeight) * canvas.height;
+            });
+            keepChargesInBounds();
+        }
+
+        draw();
+    }
+
+    function createDefaultCharges() {
+        const spacing = Math.min(canvas.width, canvas.height) * 0.3;
+        return [
+            { x: canvas.width / 2 - spacing, y: canvas.height / 2, q: parseInt(slQ1.value), id: 1 },
+            { x: canvas.width / 2 + spacing, y: canvas.height / 2, q: parseInt(slQ2.value), id: 2 }
+        ];
+    }
+
+    function keepChargesInBounds() {
+        const margin = 26;
+        charges.forEach(c => {
+            c.x = Math.min(canvas.width - margin, Math.max(margin, c.x));
+            c.y = Math.min(canvas.height - margin, Math.max(margin, c.y));
+        });
+    }
+
+    function update() {
+        const q1 = parseInt(slQ1.value);
+        const q2 = parseInt(slQ2.value);
+
+        updateText(txtQ1, q1);
+        updateText(txtQ2, q2);
+
+        if (charges.length === 0) {
+            charges = createDefaultCharges();
+        } else {
+            charges[0].q = q1;
+            charges[1].q = q2;
+            keepChargesInBounds();
+        }
+
+        draw();
+    }
+
     function updateDensity() {
         const density = parseInt(slDensity.value);
         PARAMS.density = density;
@@ -392,264 +435,359 @@
         simDensityDisplay.innerText = density;
         draw();
     }
-    
+
     function updateColor() {
         fieldLineColor = colorPicker.value;
         colorIndicator.style.backgroundColor = fieldLineColor;
         updateColorName(fieldLineColor);
         draw();
     }
-    
+
     function updateColorName(color) {
         // 查找最接近的颜色名称
         let closestColor = '#4ade80';
         let minDiff = Infinity;
-        
-        for (const [key, name] of Object.entries(colorNames)) {
+
+        for (const [key] of Object.entries(colorNames)) {
             const diff = colorDiff(color, key);
             if (diff < minDiff) {
                 minDiff = diff;
                 closestColor = key;
             }
         }
-        
+
         fieldColorName.textContent = colorNames[closestColor] || '自定义颜色';
     }
-    
+
     function colorDiff(color1, color2) {
-        // 简单的颜色差异计算
         const r1 = parseInt(color1.slice(1, 3), 16);
         const g1 = parseInt(color1.slice(3, 5), 16);
         const b1 = parseInt(color1.slice(5, 7), 16);
-        
+
         const r2 = parseInt(color2.slice(1, 3), 16);
         const g2 = parseInt(color2.slice(3, 5), 16);
         const b2 = parseInt(color2.slice(5, 7), 16);
-        
+
         return Math.sqrt((r1-r2)**2 + (g1-g2)**2 + (b1-b2)**2);
     }
-  
-    function updateText(el, val) {  
-        el.innerText = (val > 0 ? "+" : "") + val;  
-        el.className = "val-display " + (val > 0 ? "pos-color" : (val < 0 ? "neg-color" : "neu-color"));  
-    }  
-  
-    // --- 核心物理计算 ---  
-  
-    function getField(x, y) {  
-        let ex = 0, ey = 0;  
-        let minMsg = { distSq: Infinity, charge: null }; // 最近电荷信息  
-  
-        for (let c of charges) {  
-            if (c.q === 0) continue;  
-            const dx = x - c.x;  
-            const dy = y - c.y;  
-            const rSq = dx*dx + dy*dy;  
-              
-            if (rSq < minMsg.distSq) {  
-                minMsg.distSq = rSq;  
-                minMsg.charge = c;  
-            }  
-  
-            // 库仑定律 E = kQ/r^2 (忽略k)  
-            const r = Math.sqrt(rSq);  
-            // 避免除以零  
-            const r3 = r * rSq;   
-            if (r3 < 0.1) return { x:0, y:0, near: c };  
-  
-            ex += c.q * dx / r3;  
-            ey += c.q * dy / r3;  
-        }  
-  
-        return { x: ex, y: ey, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };  
-    }  
-  
-    // --- 追踪单条线 ---  
-    // startCharge: 发出该线的电荷（如果是负电荷，则表示反向追踪的起点）  
-    // direction: 1 为顺着电场（正电荷发出），-1 为逆着电场（负电荷吸收）  
-    function traceLine(startX, startY, direction) {  
-        let path = [{x: startX, y: startY}];  
-        let currX = startX;  
-        let currY = startY;  
-        let hitCharge = null; // 记录这条线最终撞到了哪个电荷  
-  
-        for (let i = 0; i < PARAMS.maxIter; i++) {  
-            const f = getField(currX, currY);  
-              
-            // 归一化电场矢量  
-            const len = Math.sqrt(f.x*f.x + f.y*f.y);  
-            if (len === 0) break;  
-  
-            // 前进一步  
-            const dx = (f.x / len) * PARAMS.step * direction;  
-            const dy = (f.y / len) * PARAMS.step * direction;  
-  
-            currX += dx;  
-            currY += dy;  
-            path.push({x: currX, y: currY});  
-  
-            // 1. 边界检查 (出屏幕太远就停止)  
-            if (currX < -50 || currX > canvas.width + 50 || currY < -50 || currY > canvas.height + 50) {  
-                break;  
-            }  
-  
-            // 2. 碰撞检查 (是否撞到了任何电荷)  
-            if (f.nearDistSq < PARAMS.collisionR * PARAMS.collisionR) {  
-                hitCharge = f.nearCharge;  
-                break; // 撞到了，结束追踪  
-            }  
-        }  
-        return { path, hitCharge };  
-    }  
-  
-    // --- 绘图主循环 ---  
-  
-    function draw() {  
-        ctx.fillStyle = "#000"; // 清除背景  
-        ctx.fillRect(0, 0, canvas.width, canvas.height);  
-  
-        // 1. 计算并绘制所有线  
-        // 策略：  
-        // A. 正电荷：必须发射线条。这些线一定会画。  
-        // B. 负电荷：逆向发射线条。但是，如果逆向追溯回去发现撞到了正电荷，说明这条线在A阶段已经画过了，必须丢弃。  
-          
-        charges.forEach(c => {  
-            if (c.q === 0) return;  
-  
-            // 决定线条数量  
-            const count = Math.abs(c.q) * PARAMS.density;  
-            const isPositive = c.q > 0;  
-            const direction = isPositive ? 1 : -1; // 正电荷顺场走，负电荷逆场走  
-              
-            // 颜色 - 统一使用fieldLineColor
-            const color = fieldLineColor + 'CC'; // 添加透明度
-  
-            for (let i = 0; i < count; i++) {  
-                const angle = (Math.PI * 2 * i) / count;  
-                const startR = PARAMS.collisionR + 2;  
-                const sx = c.x + Math.cos(angle) * startR;  
-                const sy = c.y + Math.sin(angle) * startR;  
-  
-                // 追踪路径  
-                const result = traceLine(sx, sy, direction);  
-  
-                let shouldDraw = false;  
-  
-                if (isPositive) {  
-                    // 正电荷发出的线，永远绘制  
-                    shouldDraw = true;  
-                } else {  
-                    // 负电荷反向追踪的线  
-                    // 只有当它没有撞到任何正电荷（即来自无穷远）时才绘制  
-                    // 注意：result.hitCharge 是这条反向线最终碰到的东西  
-                    if (result.hitCharge && result.hitCharge.q > 0) {  
-                        shouldDraw = false; // 它是连接线，正电荷那边已经画了，去重  
-                    } else {  
-                        shouldDraw = true; // 来自无穷远，需要补画  
-                    }  
-                }  
-  
-                if (shouldDraw) {  
-                    drawPath(result.path, color, direction); // 传入 direction 用于画箭头  
-                }  
-            }  
-        });  
-  
-        // 2. 绘制电荷球体  
-        charges.forEach(c => {  
-            if (c.q === 0) {  
-                 // 画中性灰点  
-                ctx.beginPath();  
-                ctx.arc(c.x, c.y, 8, 0, Math.PI*2);  
-                ctx.fillStyle = "#444";  
-                ctx.fill();  
-                return;  
-            }  
-              
-            const r = 12 + Math.abs(c.q); // 电量越大球越大  
-            ctx.beginPath();  
-            ctx.arc(c.x, c.y, r, 0, Math.PI * 2);  
-              
-            // 径向渐变，更有立体感  
-            const grad = ctx.createRadialGradient(c.x-r/3, c.y-r/3, r/4, c.x, c.y, r);  
-            if (c.q > 0) {  
-                grad.addColorStop(0, '#ffaaaa');  
-                grad.addColorStop(1, '#cc0000');  
-            } else {  
-                grad.addColorStop(0, '#aaddff');  
-                grad.addColorStop(1, '#0044cc');  
-            }  
-              
-            ctx.fillStyle = grad;  
-            ctx.fill();  
-              
-            // 文字符号  
-            ctx.fillStyle = "#fff";  
-            ctx.font = "bold 16px Arial";  
-            ctx.textAlign = "center";  
-            ctx.textBaseline = "middle";  
-            ctx.fillText(c.q > 0 ? "+" : "-", c.x, c.y);  
-        });  
-    }  
-  
-    function drawPath(path, color, genDir) {  
-        if (path.length < 2) return;  
-  
-        ctx.beginPath();  
-        ctx.strokeStyle = color;  
-        ctx.lineWidth = 1.5;  
-        ctx.moveTo(path[0].x, path[0].y);  
-          
-        for (let i = 1; i < path.length; i++) {  
-            ctx.lineTo(path[i].x, path[i].y);  
-        }  
-        ctx.stroke();  
-  
-        // 绘制箭头  
-        // 电场线方向永远是从正 -> 负  
-        // 1. 如果 genDir = 1 (正电荷发出)，path顺序就是电场方向。  
-        // 2. 如果 genDir = -1 (负电荷反向追踪)，path顺序是电场反方向。  
-          
-        let distAcc = 0;  
-        ctx.fillStyle = color; // 使用相同的颜色绘制箭头
-        
-        for (let i = 1; i < path.length; i++) {  
-            const dx = path[i].x - path[i-1].x;  
-            const dy = path[i].y - path[i-1].y;  
-            const dist = Math.sqrt(dx*dx + dy*dy);  
-            distAcc += dist;  
-  
-            if (distAcc > PARAMS.arrowSpacing) {  
-                distAcc = 0;  
-                  
-                // 计算切线角度  
-                let angle = Math.atan2(dy, dx);  
-                  
-                // 修正箭头指向  
-                if (genDir === -1) {  
-                    angle += Math.PI; // 反转箭头  
-                }  
-  
-                drawArrow(path[i].x, path[i].y, angle);  
-            }  
-        }  
-    }  
-  
-    function drawArrow(x, y, angle) {  
-        ctx.save();  
-        ctx.translate(x, y);  
-        ctx.rotate(angle);  
-        ctx.beginPath();  
-        ctx.moveTo(3, 0);  
-        ctx.lineTo(-4, -3);  
-        ctx.lineTo(-4, 3);  
-        ctx.fill();  
-        ctx.restore();  
-    }  
-  
-    // 启动  
-    init();  
-  
+
+    function updateText(el, val) {
+        el.innerText = (val > 0 ? '+' : '') + val;
+        el.className = 'val-display ' + (val > 0 ? 'pos-color' : (val < 0 ? 'neg-color' : 'neu-color'));
+    }
+
+    // --- 交互：拖拽电荷 ---
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+
+    function getChargeRadius(c) {
+        if (c.q === 0) return 10;
+        return 12 + Math.abs(c.q);
+    }
+
+    function pickCharge(x, y) {
+        for (let i = charges.length - 1; i >= 0; i--) {
+            const c = charges[i];
+            const r = getChargeRadius(c) + 6;
+            const dx = x - c.x;
+            const dy = y - c.y;
+            if (dx * dx + dy * dy <= r * r) {
+                return c.id;
+            }
+        }
+        return null;
+    }
+
+    function onPointerDown(e) {
+        const p = getMousePos(e);
+        const id = pickCharge(p.x, p.y);
+        if (id !== null) {
+            e.preventDefault();
+            activeChargeId = id;
+            activePointerId = e.pointerId;
+            hoverChargeId = id;
+            canvas.setPointerCapture(e.pointerId);
+            canvas.style.cursor = 'grabbing';
+            draw();
+        }
+    }
+
+    function onPointerMove(e) {
+        if (activePointerId !== null && e.pointerId !== activePointerId) return;
+        const p = getMousePos(e);
+
+        if (activeChargeId !== null) {
+            const c = charges.find(item => item.id === activeChargeId);
+            if (!c) return;
+            c.x = p.x;
+            c.y = p.y;
+            keepChargesInBounds();
+            draw();
+            return;
+        }
+
+        const id = pickCharge(p.x, p.y);
+        if (hoverChargeId !== id) {
+            hoverChargeId = id;
+            canvas.style.cursor = id !== null ? 'grab' : 'default';
+            draw();
+        }
+    }
+
+    function onPointerUp(e) {
+        if (activePointerId !== null && e && e.pointerId !== activePointerId) return;
+        if (activePointerId !== null && canvas.hasPointerCapture(activePointerId)) {
+            canvas.releasePointerCapture(activePointerId);
+        }
+        activeChargeId = null;
+        activePointerId = null;
+        canvas.style.cursor = hoverChargeId !== null ? 'grab' : 'default';
+        draw();
+    }
+
+    // --- 核心物理计算 ---
+
+    function getField(x, y) {
+        let ex = 0, ey = 0;
+        let minMsg = { distSq: Infinity, charge: null };
+
+        for (const c of charges) {
+            if (c.q === 0) continue;
+            const dx = x - c.x;
+            const dy = y - c.y;
+            const rSq = dx*dx + dy*dy;
+
+            if (rSq < minMsg.distSq) {
+                minMsg.distSq = rSq;
+                minMsg.charge = c;
+            }
+
+            const r = Math.sqrt(rSq);
+            const r3 = r * rSq;
+            if (r3 < 0.1) return { x: 0, y: 0, nearDistSq: rSq, nearCharge: c };
+
+            ex += c.q * dx / r3;
+            ey += c.q * dy / r3;
+        }
+
+        return { x: ex, y: ey, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };
+    }
+
+    function traceFieldLine(startX, startY, followDirection) {
+        const path = [{ x: startX, y: startY }];
+        let currX = startX;
+        let currY = startY;
+        let hitCharge = null;
+
+        for (let i = 0; i < PARAMS.maxIter; i++) {
+            const f = getField(currX, currY);
+            const len = Math.hypot(f.x, f.y);
+            if (len < 1e-6) break;
+
+            const stepScale = PARAMS.step * followDirection;
+            currX += (f.x / len) * stepScale;
+            currY += (f.y / len) * stepScale;
+            path.push({ x: currX, y: currY });
+
+            if (currX < -80 || currX > canvas.width + 80 || currY < -80 || currY > canvas.height + 80) {
+                break;
+            }
+
+            if (f.nearDistSq < PARAMS.collisionR * PARAMS.collisionR) {
+                hitCharge = f.nearCharge;
+                break;
+            }
+        }
+
+        return { path, hitCharge };
+    }
+
+    function pathKey(p) {
+        const cell = PARAMS.dedupCell;
+        return `${Math.round(p.x / cell)}:${Math.round(p.y / cell)}`;
+    }
+
+    function isPathRedundant(path, occupied) {
+        if (path.length < 5) return true;
+
+        let checks = 0;
+        let hits = 0;
+        for (let i = 0; i < path.length; i += 3) {
+            checks++;
+            if (occupied.has(pathKey(path[i]))) hits++;
+        }
+
+        return checks > 0 && hits / checks > 0.42;
+    }
+
+    function registerPath(path, occupied) {
+        for (let i = 0; i < path.length; i += 2) {
+            occupied.add(pathKey(path[i]));
+        }
+    }
+
+    function buildFieldLines() {
+        const lines = [];
+        const occupied = new Set();
+        const positiveCharges = charges.filter(c => c.q > 0);
+        const negativeCharges = charges.filter(c => c.q < 0);
+
+        const positiveCount = positiveCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
+        const negativeCount = negativeCharges.reduce((sum, c) => sum + Math.abs(c.q) * PARAMS.density, 0);
+
+        // 新策略 1：所有正电荷发射（场线原生方向）
+        for (const c of positiveCharges) {
+            const count = Math.abs(c.q) * PARAMS.density;
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const startR = PARAMS.collisionR + 2;
+                const sx = c.x + Math.cos(angle) * startR;
+                const sy = c.y + Math.sin(angle) * startR;
+                const result = traceFieldLine(sx, sy, 1);
+
+                if (!isPathRedundant(result.path, occupied)) {
+                    registerPath(result.path, occupied);
+                    lines.push(result.path);
+                }
+            }
+        }
+
+        // 新策略 2：净负电体系，从负电荷反向追踪补全来自无穷远的场线
+        if (negativeCount > positiveCount) {
+            const deficit = negativeCount - positiveCount;
+            const weightSum = negativeCharges.reduce((sum, c) => sum + Math.abs(c.q), 0);
+
+            for (const c of negativeCharges) {
+                const quota = Math.round(deficit * Math.abs(c.q) / weightSum);
+                for (let i = 0; i < quota; i++) {
+                    const angle = (Math.PI * 2 * i) / Math.max(quota, 1);
+                    const sx = c.x + Math.cos(angle) * (PARAMS.collisionR + 2);
+                    const sy = c.y + Math.sin(angle) * (PARAMS.collisionR + 2);
+
+                    const result = traceFieldLine(sx, sy, -1);
+                    if (result.hitCharge && result.hitCharge.q > 0) continue;
+
+                    const fieldPath = result.path.slice().reverse();
+                    if (!isPathRedundant(fieldPath, occupied)) {
+                        registerPath(fieldPath, occupied);
+                        lines.push(fieldPath);
+                    }
+                }
+            }
+        }
+
+        return lines;
+    }
+
+    // --- 绘图主循环 ---
+
+    function draw() {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 1. 绘制场线（去重后的路径集合）
+        const lineColor = fieldLineColor + 'CC';
+        const lines = buildFieldLines();
+        lines.forEach(path => drawPath(path, lineColor));
+
+        // 2. 绘制电荷
+        charges.forEach(c => {
+            if (c.q === 0) {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 8, 0, Math.PI*2);
+                ctx.fillStyle = '#444';
+                ctx.fill();
+                return;
+            }
+
+            const r = getChargeRadius(c);
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+
+            const grad = ctx.createRadialGradient(c.x-r/3, c.y-r/3, r/4, c.x, c.y, r);
+            if (c.q > 0) {
+                grad.addColorStop(0, '#ffaaaa');
+                grad.addColorStop(1, '#cc0000');
+            } else {
+                grad.addColorStop(0, '#aaddff');
+                grad.addColorStop(1, '#0044cc');
+            }
+
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            if (c.id === activeChargeId || c.id === hoverChargeId) {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, r + 4, 0, Math.PI * 2);
+                ctx.strokeStyle = '#fff8';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(c.q > 0 ? '+' : '-', c.x, c.y);
+        });
+
+        ctx.fillStyle = '#bbb';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('提示：拖动红/蓝电荷可改变位置', 12, canvas.height - 14);
+    }
+
+    function drawPath(path, color) {
+        if (path.length < 2) return;
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(path[0].x, path[0].y);
+
+        for (let i = 1; i < path.length; i++) {
+            ctx.lineTo(path[i].x, path[i].y);
+        }
+        ctx.stroke();
+
+        let distAcc = 0;
+        ctx.fillStyle = color;
+
+        for (let i = 1; i < path.length; i++) {
+            const dx = path[i].x - path[i-1].x;
+            const dy = path[i].y - path[i-1].y;
+            const dist = Math.hypot(dx, dy);
+            distAcc += dist;
+
+            if (distAcc > PARAMS.arrowSpacing) {
+                distAcc = 0;
+                const angle = Math.atan2(dy, dx);
+                drawArrow(path[i].x, path[i].y, angle);
+            }
+        }
+    }
+
+    function drawArrow(x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(3, 0);
+        ctx.lineTo(-4, -3);
+        ctx.lineTo(-4, 3);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 启动
+    init();
+
 </script>  
 </body>  
 </html>  
