@@ -577,7 +577,23 @@
         return { x: ex, y: ey, nearDistSq: minMsg.distSq, nearCharge: minMsg.charge };
     }
 
-    function traceFieldLine(startX, startY, followDirection) {
+    function getDynamicTraceMargin() {
+        if (charges.length < 2) return 120;
+
+        let maxPairDistance = 0;
+        for (let i = 0; i < charges.length; i++) {
+            for (let j = i + 1; j < charges.length; j++) {
+                const dx = charges[i].x - charges[j].x;
+                const dy = charges[i].y - charges[j].y;
+                maxPairDistance = Math.max(maxPairDistance, Math.hypot(dx, dy));
+            }
+        }
+
+        // 电荷距离越大，场线需要更大的离屏积分空间，避免过早截断。
+        return Math.max(120, Math.min(520, maxPairDistance * 1.2));
+    }
+
+    function traceFieldLine(startX, startY, followDirection, traceMargin) {
         const path = [{ x: startX, y: startY }];
         let currX = startX;
         let currY = startY;
@@ -593,7 +609,7 @@
             currY += (f.y / len) * stepScale;
             path.push({ x: currX, y: currY });
 
-            if (currX < -80 || currX > canvas.width + 80 || currY < -80 || currY > canvas.height + 80) {
+            if (currX < -traceMargin || currX > canvas.width + traceMargin || currY < -traceMargin || currY > canvas.height + traceMargin) {
                 break;
             }
 
@@ -642,6 +658,7 @@
     function buildFieldLines() {
         const lines = [];
         const occupied = new Set();
+        const traceMargin = getDynamicTraceMargin();
         const positiveCharges = charges.filter(c => c.q > 0);
         const negativeCharges = charges.filter(c => c.q < 0);
 
@@ -656,22 +673,18 @@
             const startR = PARAMS.collisionR + 2;
 
             if (isBalancedSystem) {
-                let accepted = 0;
-                let attempt = 0;
-                const maxAttempts = count * 8;
-
-                while (accepted < count && attempt < maxAttempts) {
-                    const angle = (Math.PI * 2 * attempt) / maxAttempts;
+                // 等量异号体系：从正电荷按均匀角度直接发射。
+                // 这样可保持关于连线轴的对称性，避免“先命中先收”导致畸变。
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count;
                     const sx = c.x + Math.cos(angle) * startR;
                     const sy = c.y + Math.sin(angle) * startR;
-                    const result = traceFieldLine(sx, sy, 1);
+                    const result = traceFieldLine(sx, sy, 1, traceMargin);
 
-                    // 零净电荷体系：只保留闭合到负电荷的场线
+                    // 净电荷为 0 时场线应由正电荷终止于负电荷。
                     if (result.hitCharge && result.hitCharge.q < 0) {
                         lines.push(result.path);
-                        accepted++;
                     }
-                    attempt++;
                 }
                 continue;
             }
@@ -680,7 +693,7 @@
                 const angle = (Math.PI * 2 * i) / count;
                 const sx = c.x + Math.cos(angle) * startR;
                 const sy = c.y + Math.sin(angle) * startR;
-                const result = traceFieldLine(sx, sy, 1);
+                const result = traceFieldLine(sx, sy, 1, traceMargin);
 
                 if (!isPathRedundant(result.path, occupied)) {
                     registerPath(result.path, occupied);
@@ -701,7 +714,7 @@
                     const sx = c.x + Math.cos(angle) * (PARAMS.collisionR + 2);
                     const sy = c.y + Math.sin(angle) * (PARAMS.collisionR + 2);
 
-                    const result = traceFieldLine(sx, sy, -1);
+                    const result = traceFieldLine(sx, sy, -1, traceMargin);
                     if (result.hitCharge && result.hitCharge.q > 0) continue;
 
                     const fieldPath = result.path.slice().reverse();
